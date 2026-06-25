@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flowers Ads — Daily Monitor</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff;
+    --green:#3fb950; --red:#f85149; --amber:#d29922;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+  header{padding:18px 24px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;gap:16px;flex-wrap:wrap;background:var(--panel)}
+  header h1{font-size:18px;margin:0;font-weight:600}
+  .meta{color:var(--muted);font-size:12px}
+  .meta b{color:var(--text)}
+  .wrap{padding:20px 24px;max-width:1280px;margin:0 auto}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+  .seg{display:inline-flex;background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+  .seg button{background:transparent;border:none;color:var(--muted);padding:8px 14px;cursor:pointer;font-size:13px}
+  .seg button:hover{color:var(--text)}
+  .seg button.active{background:var(--accent);color:#fff;font-weight:600}
+  .label{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:0 6px 0 2px;align-self:center}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .card .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .card .v{font-size:22px;font-weight:700;margin-top:4px}
+  .card .d{font-size:12px;margin-top:3px}
+
+  table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th,td{padding:10px 12px;text-align:right;border-bottom:1px solid var(--border);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--panel2);color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover{background:var(--panel2)}
+  .metric{font-weight:600}
+  .cur{font-weight:700;font-size:15px}
+  .delta{font-size:11px;display:block;margin-top:2px}
+  .up{color:var(--green)} .down{color:var(--red)} .flat{color:var(--muted)}
+  .sub{color:var(--muted);font-size:12px}
+  .section-title{font-size:15px;font-weight:600;margin:26px 0 12px}
+  .note{background:var(--panel);border:1px dashed var(--border);border-radius:10px;padding:16px;color:var(--muted)}
+  .stale{color:var(--amber);font-size:12px;margin-left:6px}
+  .pill{display:inline-block;padding:1px 7px;border-radius:20px;font-size:11px;border:1px solid var(--border);color:var(--muted)}
+  .sqbar{display:flex;height:26px;border-radius:6px;overflow:hidden;margin:10px 0 14px;border:1px solid var(--border)}
+  .sqbar span{display:flex;align-items:center;justify-content:center;font-size:11px;color:#0d1117;font-weight:700;min-width:0;overflow:hidden;white-space:nowrap}
+  .sqctl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 16px;font-size:13px}
+  .sqctl button{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 11px;font-size:12px;cursor:pointer}
+  .sqctl button:hover{border-color:var(--accent);color:var(--accent)}
+  .sqctl input[type=date]{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:12px;color-scheme:dark}
+  .dlbtn{background:#238636;color:#fff;border:0;border-radius:8px;padding:8px 15px;font-size:13px;font-weight:600;cursor:pointer;margin:4px 0 6px}
+  .dlbtn:hover{background:#2ea043}
+  .metctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .metctl input[type=date],.metctl input[type=number],.metctl input[type=text]{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px;color-scheme:dark}
+  .metctl input[type=number]{width:84px}.metctl input[type=text]{width:130px}
+  .metctl select,#provSel{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:12px}
+  .metctl .apply{background:var(--accent,#58a6ff);color:#0d1117;border:0;border-radius:6px;padding:5px 13px;font-size:12px;font-weight:600;cursor:pointer}
+  .metctl .apply:hover{filter:brightness(1.1)}
+  .wk{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+  .wk input{cursor:pointer}
+  .hsub{font-size:10px;color:var(--muted);font-weight:400;margin-top:3px;letter-spacing:.2px;white-space:nowrap}
+  .ct{color:var(--muted)}.mut2{color:var(--muted)}
+  .sqtop{display:flex;gap:32px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+  .donut{flex:0 0 auto}
+  .sqleg{display:flex;flex-direction:column;gap:8px;margin-bottom:0;font-size:13px}
+  .sqleg .it{display:flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:2px;display:inline-block}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:12px;color:var(--muted)}
+  .chip b{color:var(--text)}
+
+  /* password gate */
+  #gate{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:50}
+  #gate .box{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:28px;width:300px;text-align:center}
+  #gate input{width:100%;padding:10px;margin:14px 0;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px}
+  #gate button{width:100%;padding:10px;background:var(--accent);border:none;border-radius:8px;color:#fff;font-weight:600;cursor:pointer}
+  #gate .err{color:var(--red);font-size:12px;height:16px}
+  .hidden{display:none!important}
+  #viewSeg button{font-size:14px;padding:7px 16px}
+  .mapwrap{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:10px}
+  #lmap.full{position:fixed!important;inset:0;width:100vw!important;height:100vh!important;z-index:9999;border-radius:0;border:0;margin:0}
+  #mapFullBtn.on{background:var(--red,#f85149);color:#fff}
+  /* воронка GA4 */
+  .fcard{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:16px}
+  .fhead{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+  .fhead b{font-size:16px}
+  .fcr{font-size:13px;font-weight:600;color:var(--text)}
+  .fsub{font-size:12px;color:var(--muted);margin-left:auto}
+  .fdelta{font-size:11px;font-weight:600;margin-left:4px}
+  .fdelta.good,.fanom.good{color:var(--green,#3fb950)}
+  .fdelta.bad,.fanom.bad{color:var(--red,#f85149)}
+  .frow{margin:9px 0}
+  .finfo{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;margin-bottom:3px}
+  .fstepname{font-weight:600}
+  .fnums{font-variant-numeric:tabular-nums}
+  .fmuted{color:var(--muted);font-weight:400;font-size:11px}
+  .ftrack{background:var(--panel2);border-radius:6px;height:22px;overflow:hidden}
+  .fbar{height:100%;border-radius:6px;background:linear-gradient(90deg,#58a6ff,#3fb0ff);transition:width .4s}
+  .fmeta{display:flex;gap:12px;margin-top:3px;font-size:11px}
+  .fconv{color:var(--muted)}
+  .fanom{font-weight:600}
+  /* таблиця ROAS/tCPA */
+  .roastbl{width:100%;border-collapse:collapse;font-size:13px}
+  .roastbl th{text-align:right;color:var(--muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.4px;padding:6px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .roastbl th:first-child,.roastbl th:nth-child(2),.roastbl th:nth-child(3){text-align:left}
+  .roastbl td{text-align:right;padding:6px 10px;border-bottom:1px solid var(--border);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .roastbl td:first-child,.roastbl td:nth-child(2),.roastbl td:nth-child(3){text-align:left}
+  .roastbl td.cn{max-width:300px;overflow:hidden;text-overflow:ellipsis;font-weight:500}
+  .roastbl tbody tr:hover{background:var(--panel)}
+  .roastbl td.bad{color:var(--red,#f85149)}
+  .roastbl td.good{color:var(--green,#3fb950)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <h2 style="margin:0 0 4px">🌸 Flowers Ads Monitor</h2>
+    <div class="sub">Введіть пароль доступу</div>
+    <input id="pw" type="password" placeholder="пароль" autofocus>
+    <button onclick="tryUnlock()">Увійти</button>
+    <div class="err" id="gateErr"></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+<header>
+  <h1>🌸 Flowers Ads — Daily Monitor</h1>
+  <div class="meta">Опорний день: <b id="refDate">—</b> · оновлено: <b id="genAt">—</b><span id="staleNote"></span></div>
+</header>
+
+<div class="wrap">
+  <div class="seg" id="viewSeg" style="margin-bottom:14px">
+    <button data-view="dash" class="active">📊 Дашборд</button>
+    <button data-view="map">🗺 Карта конверсій</button>
+    <button data-view="funnel">📉 Воронка GA4</button>
+    <button data-view="roas">🎯 ROAS / tCPA</button>
+    <button data-view="budget">💰 Бюджет</button>
+    <button data-view="coverage">🏙 Покриття</button>
+    <button data-view="merchant">🛒 Товари</button>
+  </div>
+  <div class="controls">
+    <span class="label">Акаунт</span>
+    <div class="seg" id="accSeg"></div>
+    <span class="label" id="platLabel" style="margin-left:14px">Платформа</span>
+    <div class="seg" id="pfSeg">
+      <button data-pf="GOOGLE" class="active">Google Ads</button>
+      <button data-pf="BING">Bing</button>
+    </div>
+    <span class="label" id="typeLabel" style="margin-left:14px">Тип</span>
+    <div class="seg" id="chSeg">
+      <button data-type="search" class="active">Пошук</button>
+      <button data-type="pmax">PMax</button>
+      <button data-type="total">Разом</button>
+    </div>
+  </div>
+
+  <div id="dashView">
+  <div class="metctl" id="metricCtl" style="margin:2px 0 14px"></div>
+
+  <div class="cards" id="cards"></div>
+
+  <div class="section-title">Порівняння показників <span class="sub" id="cmpScope"></span></div>
+  <table>
+    <thead>
+      <tr>
+        <th>Показник</th>
+        <th id="thCur">Поточний</th>
+        <th id="thWow">Тиждень тому</th>
+        <th id="th25">2025 (рік тому)</th>
+        <th id="th24">2024 (2 роки)</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="sub" style="margin-top:8px">Δ% — зміна поточного дня до відповідної бази. IS-метрики — зважене середнє по показах (наближення eligible/served).</div>
+
+  <div id="acctBreak"></div>
+
+  <div class="section-title">Якість пошукових запитів <span class="sub" id="sqScope"></span></div>
+  <div id="sqWrap"></div>
+  </div><!-- /dashView -->
+
+  <div id="mapView" class="hidden">
+    <div class="metctl" style="margin:2px 0 12px">
+      <span class="label">Конверсії по містах (30 днів)</span>
+      <label class="wk"><input type="checkbox" id="popChk" onchange="togglePop()"> 🟠 Втрачені міста (населення без конверсій)</label>
+      <label class="wk"><input type="checkbox" id="allCitiesChk" onchange="toggleAllCities()"> 🟣 Усі міста (за населенням)</label>
+      <span class="label" style="margin-left:14px">Регіон</span>
+      <select id="regionSel" onchange="setRegion(this.value)"></select>
+      <button class="apply" id="mapFullBtn" onclick="toggleMapFull()" style="margin-left:14px">⛶ На весь екран</button>
+      <span class="sub" id="mapScope"></span>
+    </div>
+    <div id="mapStats" class="sub" style="margin:0 0 8px"></div>
+    <div id="lmap" style="height:80vh;min-height:600px;border-radius:12px;overflow:hidden;border:1px solid var(--border)"></div>
+    <div class="sub" id="mapLegend" style="margin-top:10px"></div>
+  </div>
+
+  <div id="funnelView" class="hidden">
+    <div class="metctl" id="funDateCtl" style="margin:2px 0 8px"></div>
+    <div class="metctl" style="margin:0 0 14px">
+      <span class="label">Трафік</span>
+      <span class="seg" id="funFilterSeg">
+        <button data-ff="all" class="active">Увесь трафік</button>
+        <button data-ff="google">Тільки Google Ads</button>
+        <button data-ff="bing">Тільки Bing</button>
+      </span>
+      <span class="label" style="margin-left:14px">Порівняти з</span>
+      <span class="seg" id="funCmpSeg">
+        <button data-cmp="prev" class="active">Попередній період</button>
+        <button data-cmp="yoy">Рік тому</button>
+        <button data-cmp="none">Без порівняння</button>
+      </span>
+      <span class="sub" id="funScope"></span>
+    </div>
+    <div id="funnelWrap"></div>
+  </div>
+
+  <div id="roasView" class="hidden">
+    <div class="metctl" style="margin:2px 0 14px">
+      <span class="label">Період</span>
+      <span class="seg" id="roasWinSeg">
+        <button data-w="7">7 днів</button>
+        <button data-w="14">14 днів</button>
+        <button data-w="30" class="active">30 днів</button>
+      </span>
+      <span class="label" style="margin-left:14px">Стратегія</span>
+      <span class="seg" id="roasMetricSeg">
+        <button data-m="roas" class="active">Target ROAS</button>
+        <button data-m="cpa">Target CPA</button>
+      </span>
+      <span class="label" style="margin-left:14px">Показати</span>
+      <span class="seg" id="roasStatusSeg">
+        <button data-s="all" class="active">Усі</button>
+        <button data-s="under">Недотягують</button>
+        <button data-s="over">Перевиконують</button>
+      </span>
+      <button class="apply" id="roasCopy" onclick="copyText((window._roasNames||[]).join('\n'),this)" style="margin-left:14px">📋 Копіювати назви</button>
+      <span class="sub" id="roasScope"></span>
+    </div>
+    <div id="roasWrap"></div>
+  </div>
+
+  <div id="budgetView" class="hidden">
+    <div class="metctl" style="margin:2px 0 14px">
+      <span class="label">Період</span>
+      <span class="seg" id="budWinSeg">
+        <button data-w="yest" class="active">Вчора</button>
+        <button data-w="7">7 днів</button>
+        <button data-w="14">14 днів</button>
+        <button data-w="30">30 днів</button>
+      </span>
+      <span class="label" style="margin-left:14px">Показати</span>
+      <span class="seg" id="budStatusSeg">
+        <button data-s="all" class="active">Усі</button>
+        <button data-s="capped">Вперлись у ліміт</button>
+        <button data-s="near">Близько до ліміту</button>
+      </span>
+      <button class="apply" id="budCopy" onclick="copyText((window._budNames||[]).join('\n'),this)" style="margin-left:14px">📋 Копіювати назви</button>
+      <span class="sub" id="budScope"></span>
+    </div>
+    <div id="budgetWrap"></div>
+  </div>
+
+  <div id="coverageView" class="hidden">
+    <div class="metctl" style="margin:2px 0 10px">
+      <span class="label">Покриття всіх міст</span>
+      <span class="seg" id="covWinSeg">
+        <button data-w="30">30д</button>
+        <button data-w="90" class="active">90д</button>
+        <button data-w="180">180д</button>
+        <button data-w="360">360д</button>
+      </span>
+      <span class="label" style="margin-left:14px">Показати</span>
+      <span class="seg" id="covStatusSeg">
+        <button data-s="all" class="active">Усі</button>
+        <button data-s="uncov">Не використовуємо (0)</button>
+        <button data-s="lost">⚠ Втратили</button>
+        <button data-s="new">🆕 Нові</button>
+      </span>
+      <span class="label" style="margin-left:14px">Мін. насел.</span>
+      <input id="covMinPop" type="number" min="0" step="10000" placeholder="0" oninput="covMinPopChg(this.value)">
+      <input id="covSearch" type="text" placeholder="пошук міста…" oninput="covSearchChg(this.value)">
+      <span class="label" style="margin-left:14px">Кліки</span>
+      <select id="covClkOp" onchange="covFilterChg()"><option value="">—</option><option value="&gt;">&gt;</option><option value="&gt;=">≥</option><option value="=">=</option><option value="&lt;=">≤</option><option value="&lt;">&lt;</option></select>
+      <input id="covClkVal" type="number" min="0" oninput="covFilterChg()">
+      <span class="label">Конв</span>
+      <select id="covConvOp" onchange="covFilterChg()"><option value="">—</option><option value="&gt;">&gt;</option><option value="&gt;=">≥</option><option value="=">=</option><option value="&lt;=">≤</option><option value="&lt;">&lt;</option></select>
+      <input id="covConvVal" type="number" min="0" oninput="covFilterChg()">
+      <span class="label" style="margin-left:14px">Регіон</span>
+      <select id="covRegionSel" onchange="setCovRegion(this.value)"></select>
+      <button class="apply" id="covCopy" onclick="copyText((window._covNames||[]).join('\n'),this)" style="margin-left:14px">📋 Копіювати невикористані</button>
+    </div>
+    <div id="covSummary" class="sub" style="margin:0 0 10px"></div>
+    <div id="coverageWrap"></div>
+  </div>
+
+  <div id="merchantView" class="hidden">
+    <div class="metctl" style="margin:2px 0 10px">
+      <span class="label">Статус товарів (Google Merchant Center)</span>
+      <span class="sub" id="mktScope"></span>
+    </div>
+    <div id="merchantWrap"></div>
+  </div>
+</div>
+</div>
+
+<script>
+const PERIODS=[["wow","Тиждень тому"],["yoy2025","2025 (рік тому)"],["yoy2024","2024 (2 роки)"]];
+
+// метрики: ключ, назва, форматер, чи "більше=краще"
+const METRICS=[
+  ["cpc","CPC","money",false],
+  ["cpa","CPA","money",false],
+  ["clicks","Кліки","int",true],
+  ["impressions","Покази","int",true],
+  ["ctr","CTR %","pct",true],
+  ["cr","CR %","pct",true],
+  ["roas","ROAS","x",true],
+  ["value","Цінність","money",true],
+  ["cost","Витрати","money",true],   // нейтрально, але вище=більше інвестицій
+  ["conversions","Конверсії","num1",true],
+  ["search_is","% показу (пошук)","pct",true],
+  ["top_is","% показу у топі","pct",true],
+  ["lost_rank","Програно: рейтинг","pct",false],
+  ["lost_budget","Програно: бюджет","pct",false],
+];
+
+let DATA=null, ACC=null, CH="SEARCH", M_START=null, M_END=null, WK_ALIGN=true, PLATFORM="GOOGLE", TYPE="search", VIEW="dash", MAP_MODE="bubble", POP_ON=false, _US=null, _W=null, MAP_STATE=null, _CAP=null, MAP_PROV=null, MAP_REGION=null, ALLCITIES_ON=false;
+function resolveCH(){
+  if(PLATFORM==="BING") return TYPE==="search"?"BING_SEARCH":TYPE==="pmax"?"BING_PMAX":"BING";
+  return TYPE==="search"?"SEARCH":TYPE==="pmax"?"PERFORMANCE_MAX":"TOTAL";
+}
+
+// ── деривація показників з базових сум ──────────────────────────────
+function derive(g){
+  if(!g||g.impressions==null) return null;
+  const cost=g.cost||0, clicks=g.clicks||0, conv=g.conversions||0, val=g.value||0, impr=g.impressions||0;
+  return {
+    impressions:impr, clicks:clicks, cost:cost, conversions:conv, value:val,
+    cpc: clicks? cost/clicks : null,
+    cpa: conv? cost/conv : null,
+    ctr: impr? clicks/impr*100 : null,
+    cr:  clicks? conv/clicks*100 : null,
+    roas: cost? val/cost : null,
+    search_is:g.search_is, top_is:g.top_is, lost_rank:g.lost_rank, lost_budget:g.lost_budget,
+    _is_impr: (g.search_is!=null? impr:0)  // для крос-акаунт зважування
+  };
+}
+
+// агрегування групи по кількох акаунтах (для "Усі 3")
+function aggregate(groupsList){
+  // groupsList: масив g (raw stored) для одного period/channel
+  const acc={impressions:0,clicks:0,cost:0,conversions:0,value:0};
+  let isw=0,topw=0,lrw=0,lbw=0,isimpr=0, hasAny=false;
+  for(const g of groupsList){
+    if(!g||g.impressions==null) continue; hasAny=true;
+    acc.impressions+=g.impressions||0; acc.clicks+=g.clicks||0; acc.cost+=g.cost||0;
+    acc.conversions+=g.conversions||0; acc.value+=g.value||0;
+    if(g.search_is!=null){
+      const w=g.impressions||0; isimpr+=w;
+      isw+=(g.search_is||0)*w; topw+=(g.top_is||0)*w; lrw+=(g.lost_rank||0)*w; lbw+=(g.lost_budget||0)*w;
+    }
+  }
+  if(!hasAny) return null;
+  acc.search_is = isimpr? +(isw/isimpr).toFixed(2):null;
+  acc.top_is    = isimpr? +(topw/isimpr).toFixed(2):null;
+  acc.lost_rank = isimpr? +(lrw/isimpr).toFixed(2):null;
+  acc.lost_budget=isimpr? +(lbw/isimpr).toFixed(2):null;
+  return acc;
+}
+
+// ── вікно поточного періоду + порівняння ────────────────────────────
+function dshift(iso,days){const d=new Date(iso+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
+function yearShift(iso,yrs){const p=iso.split("-");return String(+p[0]-yrs).padStart(4,"0")+"-"+p[1]+"-"+p[2];}  // дата-в-дату (рік-N)
+const WD=['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+function wd(iso){ return WD[new Date(iso+"T00:00:00Z").getUTCDay()]; }
+function fdate(iso){ const p=iso.split("-"); return p[2]+"."+p[1]; }  // DD.MM
+function winLabel(days){ if(!days||!days.length) return "";
+  const a=days[0], b=days[days.length-1];
+  return a===b ? `${fdate(a)} · ${wd(a)}` : `${fdate(a)}–${fdate(b)} · ${wd(a)}–${wd(b)}`; }
+function rangeDays(start,end){const out=[];let d=start,g=0;while(d<=end&&g++<500){out.push(d);d=dshift(d,1);}return out;}
+function mInit(){ if(!M_END) M_END=DATA.reference_date; if(!M_START) M_START=M_END; }
+function curWin(){ return rangeDays(M_START, M_END); }
+// дні для бази порівняння: поточний / попередній період (-довжина, для 1 дня -7) / 2025 / 2024
+function compWin(base){
+  const cw=curWin(), L=cw.length;
+  if(base==="current") return cw;
+  if(base==="wow")     return cw.map(d=>dshift(d, L===1? -7 : -L));
+  if(base==="yoy2025") return WK_ALIGN ? cw.map(d=>dshift(d,-364)) : cw.map(d=>yearShift(d,1));
+  if(base==="yoy2024") return WK_ALIGN ? cw.map(d=>dshift(d,-728)) : cw.map(d=>yearShift(d,2));
+  return cw;
+}
+// сирий g для (acc, channel, base) — СУМА по днях вікна з metrics_daily.
+// "TOTAL" (Разом) = Google TOTAL + Bing; інші канали — як є.
+function rawG(accId, ch, base){
+  const a=DATA.accounts[accId]; if(!a||!a.metrics_daily) return null;
+  const M=a.metrics_daily, chans = [ch];   // Bing — окрема платформа, не входить у Google TOTAL
+  let s={impressions:0,clicks:0,cost:0,conversions:0,value:0,is_impr:0,is_w:0,top_w:0,lr_w:0,lb_w:0}, any=false;
+  for(const d of compWin(base)){ for(const c of chans){ const g=M[c]&&M[c][d]; if(!g) continue; any=true;
+    s.impressions+=g.impressions;s.clicks+=g.clicks;s.cost+=g.cost;s.conversions+=g.conversions;s.value+=g.value;
+    s.is_impr+=g.is_impr;s.is_w+=g.is_w;s.top_w+=g.top_w;s.lr_w+=g.lr_w;s.lb_w+=g.lb_w; } }
+  if(!any) return null;
+  return {impressions:s.impressions,clicks:s.clicks,cost:s.cost,conversions:s.conversions,value:s.value,
+    search_is:s.is_impr?+(s.is_w/s.is_impr*100).toFixed(2):null,
+    top_is:s.is_impr?+(s.top_w/s.is_impr*100).toFixed(2):null,
+    lost_rank:s.is_impr?+(s.lr_w/s.is_impr*100).toFixed(2):null,
+    lost_budget:s.is_impr?+(s.lb_w/s.is_impr*100).toFixed(2):null};
+}
+function setMetricLen(n){ M_END=DATA.reference_date; M_START=dshift(M_END,-(n-1)); render(); }
+function setMRange(){ let a=document.getElementById('m1').value, b=document.getElementById('m2').value;
+  if(a&&b){ if(a>b){const t=a;a=b;b=t;} M_START=a; M_END=b; render(); } }
+function toggleWk(){ WK_ALIGN=document.getElementById('wkAlign').checked; render(); }
+function metricCtl(){ const L=curWin().length, isQuick=(M_END===DATA.reference_date);
+  const qb=[1,7,14,30].map(n=>`<button class="${isQuick&&L===n?'active':''}" onclick="setMetricLen(${n})">${n===1?'1д':n+'д'}</button>`).join("");
+  return `<span class="label">Період метрик</span><span class="seg">${qb}</span>
+    <input type="date" id="m1" value="${M_START}" min="${DATA.metrics_min||''}" max="${M_END}">
+    <span class="sub">—</span><input type="date" id="m2" value="${M_END}" min="${M_START}" max="${DATA.reference_date}">
+    <button class="apply" onclick="setMRange()">Показати</button>
+    <label class="wk"><input type="checkbox" id="wkAlign" ${WK_ALIGN?'checked':''} onchange="toggleWk()"> по днях тижня (Пн→Пн)</label>`;
+}
+
+// отримати derived метрики для поточного вибору + period
+function getMetrics(period){
+  if(ACC==="ALL"){
+    const list=Object.keys(DATA.accounts).map(id=>rawG(id,CH,period)).filter(Boolean);
+    return derive(aggregate(list));
+  }
+  return derive(rawG(ACC,CH,period));
+}
+
+// ── форматери ───────────────────────────────────────────────────────
+function fmt(v,type){
+  if(v==null||isNaN(v)) return "—";
+  if(type==="money") return "$"+v.toLocaleString("en-US",{maximumFractionDigits:2,minimumFractionDigits:2});
+  if(type==="int")   return Math.round(v).toLocaleString("en-US");
+  if(type==="pct")   return v.toFixed(1)+"%";
+  if(type==="x")     return v.toFixed(2)+"×";
+  if(type==="num1")  return v.toFixed(1);
+  return v;
+}
+function deltaHTML(cur,base,higherBetter){
+  if(cur==null||base==null||base===0||isNaN(cur)||isNaN(base)) return '<span class="delta flat">—</span>';
+  const d=(cur-base)/Math.abs(base)*100;
+  const good=higherBetter? d>=0 : d<=0;
+  const cls = Math.abs(d)<0.05? "flat" : (good? "up":"down");
+  const arrow = d>0.05? "▲" : (d<-0.05? "▼":"·");
+  return `<span class="delta ${cls}">${arrow} ${d>0?"+":""}${d.toFixed(1)}%</span>`;
+}
+
+// ── рендер ──────────────────────────────────────────────────────────
+function chLabel(ch){ return ch==="SEARCH"?"Пошук":ch==="PERFORMANCE_MAX"?"PMax":ch==="BING"?"Bing":"Разом"; }
+// розбивка по сайтах × типах кампаній (видно лише коли вибрано "Усі 3")
+function renderBreakdown(){
+  const el=document.getElementById("acctBreak");
+  if(ACC!=="ALL"){ el.innerHTML=""; return; }
+  const CHANS = PLATFORM==="BING"
+    ? [["BING_SEARCH","Пошук"],["BING_PMAX","PMax"],["BING","Разом"]]
+    : [["SEARCH","Пошук"],["PERFORMANCE_MAX","PMax"],["TOTAL","Разом"]];
+  const rows=[];
+  Object.keys(DATA.accounts).forEach(cid=>{
+    const name=DATA.accounts[cid].name; let first=true;
+    CHANS.forEach(([ch,lbl])=>{
+      const c=derive(rawG(cid,ch,"current")); if(!c||!c.clicks) return;
+      const b=derive(rawG(cid,ch,"wow"));
+      rows.push(`<tr><td class="metric">${first?`<b>${name}</b>`:`<span class="mut2">${name}</span>`} · <span class="ct">${lbl}</span></td>
+        <td>${fmt(c.clicks,'int')}</td><td>${fmt(c.cost,'money')}</td><td>${fmt(c.conversions,'num1')}</td>
+        <td>${fmt(c.cpa,'money')} ${deltaHTML(c.cpa, b&&b.cpa, false)}</td>
+        <td>${fmt(c.roas,'x')} ${deltaHTML(c.roas, b&&b.roas, true)}</td>
+        <td>${fmt(c.search_is,'pct')}</td></tr>`);
+      first=false;
+    });
+  });
+  if(!rows.length){ el.innerHTML=""; return; }
+  el.innerHTML=`<div class="section-title">Розподіл по сайтах і типах</div>
+    <table><thead><tr><th>Сайт · Тип</th><th>Кліки</th><th>Витрати</th><th>Конв.</th><th>CPA</th><th>ROAS</th><th>% показу</th></tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+function render(){
+  mInit();
+  const ML=curWin().length;
+  document.getElementById("metricCtl").innerHTML = metricCtl();
+  const cur=getMetrics("current");
+  const isPMax = CH==="PERFORMANCE_MAX";   // у PMax немає top_is
+  const skip = k => isPMax && k==="top_is";
+  // top cards
+  const cards=document.getElementById("cards");
+  const wow=getMetrics("wow");
+  const cardDefs=[
+    ["CPC","cpc","money",false],
+    ["CPA загальний","cpa","money",false],
+    ["% показу (пошук)","search_is","pct",true],
+    ["% показу у топі","top_is","pct",true],
+    ["Програно: рейтинг","lost_rank","pct",false],
+    ["Програно: бюджет","lost_budget","pct",false],
+  ].filter(([t,k])=>!skip(k));
+  cards.innerHTML = cardDefs.map(([t,k,ty,hb])=>{
+    const cv=cur?cur[k]:null, bv=wow?wow[k]:null;
+    return `<div class="card"><div class="k">${t}</div>
+      <div class="v">${fmt(cv,ty)}</div>
+      <div class="d">${deltaHTML(cv,bv,hb)} <span class="sub">vs ${ML===1?'тижд.':'попер.'}</span></div></div>`;
+  }).join("");
+
+  // comparison table
+  const tb=document.getElementById("tbody");
+  const bases={wow:getMetrics("wow"),yoy2025:getMetrics("yoy2025"),yoy2024:getMetrics("yoy2024")};
+  tb.innerHTML = METRICS.filter(([k])=>!skip(k)).map(([k,name,ty,hb])=>{
+    const cv=cur?cur[k]:null;
+    let cells=`<td><span class="cur">${fmt(cv,ty)}</span></td>`;
+    for(const [pk] of PERIODS){
+      const bv=bases[pk]?bases[pk][k]:null;
+      cells+=`<td>${fmt(bv,ty)}${deltaHTML(cv,bv,hb)}</td>`;
+    }
+    return `<tr><td class="metric">${name}</td>${cells}</tr>`;
+  }).join("");
+
+  // scope label
+  const mode = WK_ALIGN? "Пн→Пн" : "дата-в-дату";
+  const setTh=(id,txt,base)=>{document.getElementById(id).innerHTML=`${txt}<div class="hsub">${winLabel(compWin(base))}</div>`;};
+  setTh("thCur","Поточний","current");
+  setTh("thWow", ML===1?"Тиждень тому":`Попередній ${ML}д`, "wow");
+  setTh("th25", `2025 · ${mode}`, "yoy2025");
+  setTh("th24", `2024 · ${mode}`, "yoy2024");
+  const accName = ACC==="ALL"?"Усі 3 акаунти":DATA.accounts[ACC].name;
+  const chName = (PLATFORM==="BING"?"Bing · ":"") + (TYPE==="search"?"Пошук":TYPE==="pmax"?"PMax":"Разом");
+  const perTxt = ML===1? `день ${M_END}` : `${M_START}…${M_END} (${ML} дн.)`;
+  document.getElementById("cmpScope").textContent = `· ${accName} · ${chName} · ${perTxt}`;
+  document.getElementById("acctBreak").innerHTML="";
+  sqInit();
+  renderSQ();
+}
+
+// ── якість пошукових запитів (Search=денні кошики за період / PMax=снапшот 30д) ──
+let SQ=[["geo","По містах","#58a6ff"],["generic","Загальні","#3fb950"],
+  ["funeral","Похорон","#d29922"],["occasion","Події","#db61a2"],["product","Типи квітів","#f0883e"],
+  ["brand","Бренд","#a371f7"],["competitor","Конкуренти","#f85149"],
+  ["nontarget","Нецільові","#6e7681"],["other","Інше (PMax)","#484f58"]];
+let SQ_START=null, SQ_END=null, SQ_MIN=null, SQ_MAX=null;
+
+function sqBounds(){ let mn=null,mx=null; for(const cid in DATA.accounts){
+  const dd=DATA.accounts[cid].search_quality_daily||{}; for(const d in dd){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }} return [mn,mx]; }
+function sqInit(){ if(DATA.cat_meta&&DATA.cat_meta.length) SQ=DATA.cat_meta;
+  const [mn,mx]=sqBounds(); SQ_MIN=mn; SQ_MAX=mx;
+  if(mx&&(!SQ_END||SQ_END>mx)) SQ_END=mx;
+  if(mn&&(!SQ_START||SQ_START<mn)){ SQ_START=dshift(mx,-29); if(SQ_START<mn) SQ_START=mn; } }
+function quickRange(d){ SQ_END=SQ_MAX; SQ_START=dshift(SQ_MAX,-(d-1)); if(SQ_START<SQ_MIN)SQ_START=SQ_MIN; renderSQ(); }
+function setRange(){ SQ_START=document.getElementById('sqStart').value; SQ_END=document.getElementById('sqEnd').value; renderSQ(); }
+function sqAvail(){ return (SQ_MIN&&SQ_MAX)?Math.round((new Date(SQ_MAX+"T00:00")-new Date(SQ_MIN+"T00:00"))/864e5)+1:0; }
+function qrAll(){ SQ_START=SQ_MIN; SQ_END=SQ_MAX; renderSQ(); }
+function qrMtd(){ SQ_END=SQ_MAX; SQ_START=SQ_MAX.slice(0,8)+"01"; if(SQ_START<SQ_MIN)SQ_START=SQ_MIN; renderSQ(); }
+function sqPresetBtns(){ const av=sqAvail();
+  return [7,14,30].filter(d=>d<=av).map(d=>`<button onclick="quickRange(${d})">${d}д</button>`).join(""); }
+
+function sqFromDaily(accObj){
+  const dd=accObj&&accObj.search_quality_daily; if(!dd) return null;
+  const cats={}; SQ.forEach(([k])=>cats[k]={terms:0,clicks:0,cost:0,conv:0,value:0});
+  let total=0, any=false;
+  for(const d in dd){ if(d<SQ_START||d>SQ_END) continue; any=true;
+    const day=dd[d]; for(const k in day){ if(!cats[k])cats[k]={terms:0,clicks:0,cost:0,conv:0,value:0};
+      const b=day[k]; cats[k].clicks+=b.clicks;cats[k].cost+=b.cost;cats[k].conv+=b.conv;cats[k].value+=b.value||0;cats[k].terms+=b.terms; } }
+  if(!any) return null;
+  SQ.forEach(([k])=>total+=cats[k].clicks);
+  return {total_clicks:total,cats,nontarget_examples:[]};
+}
+function combineSQ(list){
+  list=list.filter(Boolean); if(!list.length) return null;
+  const cats={}; let total=0, ex=[]; SQ.forEach(([k])=>cats[k]={terms:0,clicks:0,cost:0,conv:0,value:0});
+  list.forEach(sq=>{ total+=sq.total_clicks;
+    SQ.forEach(([k])=>{const d=sq.cats[k]||{}; cats[k].terms+=d.terms||0;cats[k].clicks+=d.clicks||0;cats[k].cost+=d.cost||0;cats[k].conv+=d.conv||0;cats[k].value+=d.value||0;});
+    ex=ex.concat(sq.nontarget_examples||[]); });
+  SQ.forEach(([k])=>{const c=cats[k]; c.share_clicks= total?+(c.clicks/total*100).toFixed(1):0;
+    c.conv=+c.conv.toFixed(1); c.cost=Math.round(c.cost); c.roas=c.cost?+(c.value/c.cost).toFixed(2):0;});
+  ex.sort((a,b)=>b.clicks-a.clicks);
+  return {total_clicks:total,cats,nontarget_examples:ex.slice(0,12)};
+}
+function getSQ(){
+  const accs = ACC==="ALL"? Object.values(DATA.accounts) : [DATA.accounts[ACC]];
+  let parts;
+  if(CH==="SEARCH") parts=accs.map(sqFromDaily);
+  else if(CH==="PERFORMANCE_MAX") parts=accs.map(a=>a&&a.search_quality&&a.search_quality.pmax);
+  else parts=accs.flatMap(a=>[sqFromDaily(a), a&&a.search_quality&&a.search_quality.pmax]);
+  const sq=combineSQ(parts);
+  if(sq && CH!=="PERFORMANCE_MAX"){
+    let ex=accs.flatMap(a=>(a&&a.search_quality&&a.search_quality.search&&a.search_quality.search.nontarget_examples)||[]);
+    ex.sort((x,y)=>y.clicks-x.clicks); sq.nontarget_examples=ex.slice(0,12); }
+  return sq;
+}
+function donut(sq){
+  const R=70,W=26,CX=86,C=2*Math.PI*R; let off=0,seg="";
+  SQ.forEach(([k,n,c])=>{const s=sq.cats[k].share_clicks; if(s<=0)return; const ln=s/100*C;
+    seg+=`<circle cx="${CX}" cy="${CX}" r="${R}" fill="none" stroke="${c}" stroke-width="${W}" stroke-dasharray="${ln.toFixed(2)} ${(C-ln).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${CX} ${CX})"><title>${n}: ${s}%</title></circle>`; off+=ln;});
+  return `<svg viewBox="0 0 172 172" width="160" height="160">${seg}<text x="${CX}" y="${CX+4}" text-anchor="middle" fill="#8b949e" font-size="11">за кліками</text></svg>`;
+}
+function renderSQ(){
+  const wrap=document.getElementById("sqWrap"), scope=document.getElementById("sqScope");
+  if(PLATFORM==="BING"){ scope.textContent="· Bing"; wrap.innerHTML='<div class="note">Категоризація пошукових запитів для Bing поки не підключена (потрібна окрема вигрузка search terms з Microsoft Ads).</div>'; return; }
+  const isSearch = CH!=="PERFORMANCE_MAX";
+  const sq=getSQ();
+  const chL = CH==="SEARCH"?"Search":CH==="PERFORMANCE_MAX"?"PMax (категорії, 30д)":"Search + PMax";
+  const ctl = isSearch && SQ_MIN ? `<div class="sqctl"><span class="mut">Період:</span>
+    ${sqPresetBtns()}
+    <input type="date" id="sqStart" value="${SQ_START}" min="${SQ_MIN}" max="${SQ_MAX}" onchange="setRange()">
+    <span class="mut">—</span><input type="date" id="sqEnd" value="${SQ_END}" min="${SQ_MIN}" max="${SQ_MAX}" onchange="setRange()"></div>` : "";
+  if(!sq||!sq.total_clicks){ scope.textContent=`· ${chL}`;
+    wrap.innerHTML=ctl+`<div class="note">${CH==="PERFORMANCE_MAX"?"PMax-категорії":"Дані за цей період"} ще збираються (або тимчасовий ліміт API) — з'являться після оновлення.</div>`; return; }
+  const per = isSearch ? (CH==="SEARCH"?`${SQ_START}…${SQ_END}`:`${SQ_START}…${SQ_END} + PMax 30д`) : "останні 30 днів";
+  scope.textContent=`· ${chL} · ${per} · ${sq.total_clicks.toLocaleString("en-US")} кліків`;
+  const vis=SQ.filter(([k])=>sq.cats[k].share_clicks>0||sq.cats[k].terms>0);
+  const leg=vis.filter(([k])=>sq.cats[k].share_clicks>0).map(([k,n,c])=>`<div class="it"><span class="dot" style="background:${c}"></span>${n} <b>${sq.cats[k].share_clicks}%</b></div>`).join("");
+  const lbl = CH==="PERFORMANCE_MAX"?"Категорій":"Термів";
+  const rows=vis.map(([k,n,c])=>{const d=sq.cats[k];return `<tr><td class="metric"><span class="dot" style="background:${c}"></span> ${n}</td><td>${d.share_clicks}%</td><td>${(d.terms||0).toLocaleString("en-US")}</td><td>${(d.clicks||0).toLocaleString("en-US")}</td><td>$${(d.cost||0).toLocaleString("en-US")}</td><td>${d.roas||0}</td></tr>`;}).join("");
+  const chips=(sq.nontarget_examples||[]).map(e=>`<span class="chip"><b>${e.t}</b> · ${e.clicks} кл${e.cost?` · $${e.cost}`:""}</span>`).join("");
+  wrap.innerHTML=ctl+`<div class="sqtop"><div class="donut">${donut(sq)}</div><div class="sqleg">${leg}</div></div>
+    <table><thead><tr><th>Категорія</th><th>% кліків</th><th>${lbl}</th><th>Кліки</th><th>Витрати</th><th>ROAS</th></tr></thead><tbody>${rows}</tbody></table>
+    <button class="dlbtn" onclick="downloadSQ()">⬇ Завантажити запити з категоріями (${CH==="SEARCH"?"Search":CH==="PERFORMANCE_MAX"?"PMax":"Search+PMax"}, 30 днів)</button>
+    <div class="sub" style="margin-top:6px;font-size:12px">Term-level файл: кожен запит/категорія + канал (Search/PMax) + присвоєна категорія, вікно 30д. ${CH==="TOTAL"?"Search і PMax розділені колонкою «Канал».":""} Розбивка вгорі — за обраний період.</div>
+    ${chips?`<div class="sub" style="margin-top:14px">Нецільові ${CH==="PERFORMANCE_MAX"?"категорії":"запити"}${isSearch?" (за 30д, кандидати в мінус)":""}:</div><div class="chips">${chips}</div>`:""}`;
+}
+function catLabel(k){const f=SQ.find(x=>x[0]===k);return f?f[1]:k;}
+function downloadSQ(){
+  const accs = ACC==="ALL"?Object.keys(DATA.accounts):[ACC];
+  const chans = CH==="SEARCH"?["search"]:CH==="PERFORMANCE_MAX"?["pmax"]:["search","pmax"];
+  const rows=[["Акаунт","Канал","Запит / PMax-категорія","Категорія","Кліки","Витрати ($)","Конверсії","Цінність ($)"]];
+  let n=0;
+  accs.forEach(cid=>{const a=DATA.accounts[cid]; if(!a)return; const nm=a.name||cid;
+    chans.forEach(chan=>{
+      const sub=a.search_quality&&a.search_quality[chan]; const tl=(sub&&sub.terms)||[];
+      const clbl=chan==="search"?"Search":"PMax";
+      tl.forEach(t=>{ n++; rows.push(chan==="search"
+        ? [nm,clbl,t.t,catLabel(t.c),t.cl,t.co,t.cv,t.vl]
+        : [nm,clbl,t.t,catLabel(t.c),t.cl,"",t.cv,""]); });
+    });
+  });
+  if(!n){ alert("Term-level дані ще збираються — з'являться після наступного оновлення."); return; }
+  const csv=rows.map(r=>r.map(v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const accName=ACC==="ALL"?"усі3":((DATA.accounts[ACC]||{}).name||ACC);
+  const scope=CH==="SEARCH"?"Search":CH==="PERFORMANCE_MAX"?"PMax":"Search+PMax";
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+  a.download=("запити_категорії_"+accName+"_"+scope+"_30д.csv").replace(/\s+/g,"_");
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── контролери ──────────────────────────────────────────────────────
+function buildAccSeg(){
+  const seg=document.getElementById("accSeg");
+  const opts=[["ALL","Усі 3"]].concat(Object.entries(DATA.accounts).map(([id,a])=>[id,a.name.replace(/ .*/,"")]));
+  seg.innerHTML=opts.map(([id,n],i)=>`<button data-acc="${id}" class="${i===1?'active':''}">${n}</button>`).join("");
+  ACC=opts[1][0];
+  seg.querySelectorAll("button").forEach(b=>b.onclick=()=>{
+    seg.querySelectorAll("button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); ACC=b.dataset.acc; refresh();
+  });
+}
+function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else render(); }
+let FUN_FILTER="all", FUN_START=null, FUN_END=null, FUN_CMP="prev";
+const FUN_LBL={all:"увесь трафік",google:"тільки Google Ads",bing:"тільки Bing"};
+const FUN_CMP_LBL={prev:"попередній період",yoy:"рік тому",none:"без порівняння"};
+function fmtInt(n){return Math.round(n).toLocaleString("uk-UA");}
+function funMin(){ let m=null;
+  for(const a of Object.values(DATA.accounts)){ const fd=a.funnel_daily&&a.funnel_daily.all; if(!fd) continue;
+    for(const d in fd){ if(m===null||d<m) m=d; } }
+  return m||DATA.reference_date; }
+function funInit(){ if(!FUN_END) FUN_END=DATA.reference_date; if(!FUN_START) FUN_START=dshift(FUN_END,-29); }
+// сума кроків воронки по днях [start..end] для фільтра трафіку
+function sumFunnel(daily, filter, start, end){
+  const fd=(daily||{})[filter]; const s={}; if(!fd) return {sums:s, has:false};
+  let has=false, d=start, g=0;
+  while(d<=end && g++<800){ const day=fd[d]; if(day){ has=true; for(const k in day) s[k]=(s[k]||0)+day[k]; } d=dshift(d,1); }
+  return {sums:s, has};
+}
+function funCmpRange(){   // діапазон бази порівняння
+  const L=rangeDays(FUN_START,FUN_END).length;
+  if(FUN_CMP==="prev"){ const e=dshift(FUN_START,-1); return [dshift(e,-(L-1)), e]; }
+  if(FUN_CMP==="yoy"){ return [dshift(FUN_START,-364), dshift(FUN_END,-364)]; }   // тиждень-в-тиждень рік тому
+  return null;
+}
+function funnelCard(name, a){
+  const steps=a.funnel_steps, daily=a.funnel_daily;
+  if(!steps||!daily) return `<div class="fcard"><div class="fhead"><b>${name}</b></div><div class="note">Немає даних GA4.</div></div>`;
+  const cur=sumFunnel(daily,FUN_FILTER,FUN_START,FUN_END).sums;
+  const cr_=funCmpRange();
+  const cmpR=cr_? sumFunnel(daily,FUN_FILTER,cr_[0],cr_[1]):null;
+  const cmp=(cmpR&&cmpR.has)? cmpR.sums:null;
+  const st=steps.filter(s=> (cur[s.key]||0)>0 );   // лише кроки з сесіями у вибраному періоді
+  if(!st.length) return `<div class="fcard"><div class="fhead"><b>${name}</b></div><div class="note">Немає сесій за вибраний період / фільтр.</div></div>`;
+  const top=cur[st[0].key]||1, sesCur=cur[st[0].key]||0, purCur=cur["purchase"]||0;
+  const cr= sesCur? purCur/sesCur*100:0;
+  let crBadge="";
+  if(cmp){ const sesP=cmp[st[0].key]||0, purP=cmp["purchase"]||0, crP=sesP?purP/sesP*100:0;
+    if(crP){ const crD=(cr-crP)/crP*100; crBadge=`<span class="fdelta ${crD<0?'bad':'good'}">${crD>=0?'▲':'▼'} ${Math.abs(crD).toFixed(0)}%</span>`; } }
+  let bars="";
+  st.forEach((s,i)=>{
+    const v=cur[s.key]||0, w=Math.max(4, v/top*100), pct=v/top*100;
+    let conv="", anom="";
+    if(i>0){ const p=st[i-1], pv=cur[p.key]||0, rate= pv? v/pv*100:0;
+      conv=`<span class="fconv">${rate>=100?'↗':'↘'} ${rate.toFixed(1)}% з кроку «${p.label}»</span>`;
+      if(cmp){ const pvP=cmp[p.key]||0, vP=cmp[s.key]||0, rateP= pvP? vP/pvP*100:0;
+        if(rateP){ const rd=(rate-rateP)/rateP*100;
+          if(Math.abs(rd)>=15) anom=`<span class="fanom ${rd<0?'bad':'good'}" title="конверсія кроку ${rateP.toFixed(1)}% → ${rate.toFixed(1)}% vs ${FUN_CMP_LBL[FUN_CMP]}">${rd<0?'⚠ ▼':'▲'} ${Math.abs(rd).toFixed(0)}% vs ${FUN_CMP==='yoy'?'торік':'поп.'}</span>`; } }
+    }
+    bars+=`<div class="frow">
+      <div class="finfo"><span class="fstepname">${s.label}</span>
+        <span class="fnums">${fmtInt(v)} <span class="fmuted">· ${pct.toFixed(1)}% від сесій</span></span></div>
+      <div class="ftrack"><div class="fbar" style="width:${w}%"></div></div>
+      <div class="fmeta">${conv}${anom}</div>
+    </div>`;
+  });
+  return `<div class="fcard">
+    <div class="fhead"><b>${name}</b>
+      <span class="fcr">CR ${cr.toFixed(2)}% ${crBadge}</span>
+      <span class="fsub">${fmtInt(sesCur)} сесій → ${fmtInt(purCur)} покупок</span>
+    </div>${bars}</div>`;
+}
+function funDateHtml(){
+  funInit();
+  const L=rangeDays(FUN_START,FUN_END).length, isQuick=(FUN_END===DATA.reference_date), mn=funMin();
+  const qb=[7,14,30].map(n=>`<button class="${isQuick&&L===n?'active':''}" onclick="setFunLen(${n})">${n}д</button>`).join("");
+  return `<span class="label">Період воронки</span><span class="seg">${qb}</span>
+    <input type="date" id="f1" value="${FUN_START}" min="${mn}" max="${FUN_END}">
+    <span class="sub">—</span><input type="date" id="f2" value="${FUN_END}" min="${FUN_START}" max="${DATA.reference_date}">
+    <button class="apply" onclick="setFunRange()">Показати</button>`;
+}
+function setFunLen(n){ FUN_END=DATA.reference_date; FUN_START=dshift(FUN_END,-(n-1)); renderFunnel(); }
+function setFunRange(){ let a=document.getElementById('f1').value, b=document.getElementById('f2').value;
+  if(a&&b){ if(a>b){const t=a;a=b;b=t;} FUN_START=a; FUN_END=b; renderFunnel(); } }
+function renderFunnel(){
+  funInit();
+  document.getElementById("funDateCtl").innerHTML = funDateHtml();
+  const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  const cmpTxt = FUN_CMP==="none"?"":` · vs ${FUN_CMP_LBL[FUN_CMP]}`;
+  document.getElementById("funScope").textContent =
+    `${winLabel(rangeDays(FUN_START,FUN_END))} · ${FUN_LBL[FUN_FILTER]}${cmpTxt}`;
+  const cards = accs.map(id=>{ const a=DATA.accounts[id]||{};
+    return funnelCard((a.name||id).replace(/ .*/,""), a); }).join("");
+  document.getElementById("funnelWrap").innerHTML = cards +
+    `<div class="note" style="margin-top:14px">Кроки = к-сть <b>сесій</b> з подією (GA4, session-scoped). У розрізі «тільки Google/Bing» низ воронки занижений — покупки часто завершуються пізнішим прямим/email-візитом (норма GA4). «⚠ vs поп./торік» = конверсія кроку змінилась ≥15% проти бази порівняння.</div>`;
+}
+document.querySelectorAll("#funFilterSeg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#funFilterSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); FUN_FILTER=b.dataset.ff; renderFunnel();
+});
+document.querySelectorAll("#funCmpSeg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#funCmpSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); FUN_CMP=b.dataset.cmp; renderFunnel();
+});
+
+// ── вкладка ROAS / tCPA ─────────────────────────────────────────────
+function copyText(txt, btn){ const done=()=>{ const o=btn.dataset.lbl||btn.textContent; btn.dataset.lbl=o; btn.textContent="✓ Скопійовано"; setTimeout(()=>{btn.textContent=btn.dataset.lbl;},1300); };
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(()=>{fallbackCopy(txt);done();}); }
+  else { fallbackCopy(txt); done(); } }
+function fallbackCopy(txt){ const t=document.createElement("textarea"); t.value=txt; document.body.appendChild(t); t.select(); try{document.execCommand("copy");}catch(e){} t.remove(); }
+let ROAS_WIN=30, ROAS_METRIC="roas", ROAS_STATUS="all";
+function fmtMoney(n){return "$"+Math.round(n).toLocaleString("en-US");}
+function chShort(ch){ return ({SEARCH:"Пошук",PERFORMANCE_MAX:"PMax",SHOPPING:"Shopping",DISPLAY:"Display",VIDEO:"Video",MULTI_CHANNEL:"Multi"})[ch]||ch; }
+function roasCampaigns(){
+  const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  const key = PLATFORM==="BING" ? "campaigns_bing" : "campaigns";
+  const out=[];
+  accs.forEach(cid=>{ const a=DATA.accounts[cid]||{}; (a[key]||[]).forEach(c=>{
+    out.push(Object.assign({acc:(a.name||cid).replace(/ .*/,"")}, c)); }); });
+  return out;
+}
+function renderRoas(){
+  const wrap=document.getElementById("roasWrap"), scope=document.getElementById("roasScope");
+  const camps=roasCampaigns();
+  if(camps===null){ scope.textContent="· Bing"; wrap.innerHTML='<div class="note">Bing-кампанії готуються (наступний крок). Поки що тільки Google Ads — перемкни платформу на Google Ads.</div>'; return; }
+  const wkey="m"+ROAS_WIN, isRoas=ROAS_METRIC==="roas";
+  const rows=[];
+  camps.forEach(c=>{
+    const tgt=isRoas?c.target_roas:c.target_cpa; if(!tgt) return;
+    const m=c[wkey]; if(!m||m.cost<=0) return;
+    let actual,bad,dpct;
+    if(isRoas){ actual=m.value/m.cost; bad=actual<tgt; dpct=(actual-tgt)/tgt*100; }
+    else { if(m.conv<=0) return; actual=m.cost/m.conv; bad=actual>tgt; dpct=(actual-tgt)/tgt*100; }
+    rows.push({c,tgt,actual,bad,dpct,cost:m.cost,conv:m.conv,value:m.value});
+  });
+  let R=rows;
+  if(ROAS_STATUS==="under") R=rows.filter(x=>x.bad);
+  else if(ROAS_STATUS==="over") R=rows.filter(x=>!x.bad);
+  R.sort((a,b)=> b.cost-a.cost);  // найбільші витрати зверху (найважливіші для оптимізації)
+  const accName=ACC==="ALL"?"усі 3":(DATA.accounts[ACC]||{}).name||ACC;
+  scope.textContent=`· ${accName} · ${ROAS_WIN} днів · ${isRoas?"Target ROAS":"Target CPA"} · кампаній: ${R.length}`;
+  if(!R.length){
+    const nR=camps.filter(c=>c.target_roas&&c["m"+ROAS_WIN]&&c["m"+ROAS_WIN].cost>0).length;
+    const nC=camps.filter(c=>c.target_cpa&&c["m"+ROAS_WIN]&&c["m"+ROAS_WIN].cost>0).length;
+    const hint = isRoas ? (nC?` У цього акаунта/платформи кампанії на <b>Target CPA</b> (${nC}) — перемкни стратегію на «Target CPA».`:"")
+                        : (nR?` У цього акаунта/платформи кампанії на <b>Target ROAS</b> (${nR}) — перемкни стратегію на «Target ROAS».`:"");
+    document.getElementById("roasCopy").textContent="📋 Копіювати назви (0)"; window._roasNames=[];
+    wrap.innerHTML=`<div class="note">Немає кампаній із ціллю ${isRoas?'ROAS':'CPA'} за цей період.${hint}</div>`; return;
+  }
+  window._roasNames = R.map(x=>x.c.name);
+  document.getElementById("roasCopy").textContent = `📋 Копіювати назви (${R.length})`;
+  const fmtV = isRoas? (v=>v.toFixed(2)) : (v=>fmtMoney(v));
+  let html=`<table class="roastbl"><thead><tr><th>Кампанія</th><th>Акаунт</th><th>Тип</th><th>${isRoas?"Ціль ROAS":"Ціль CPA"}</th><th>${isRoas?"Факт ROAS":"Факт CPA"}</th><th>Δ</th><th>Витрати</th><th>Конв</th>${isRoas?"<th>Цінність</th>":""}</tr></thead><tbody>`;
+  R.forEach(x=>{ const cls=x.bad?"bad":"good";
+    html+=`<tr><td class="cn" title="${x.c.name}">${x.c.name}</td><td>${x.c.acc}</td><td class="mut2">${chShort(x.c.channel)}</td>`
+      +`<td>${fmtV(x.tgt)}</td><td class="${cls}"><b>${fmtV(x.actual)}</b></td>`
+      +`<td class="${cls}">${x.dpct>=0?'+':''}${x.dpct.toFixed(0)}%</td>`
+      +`<td>${fmtMoney(x.cost)}</td><td>${Math.round(x.conv)}</td>${isRoas?`<td>${fmtMoney(x.value)}</td>`:""}</tr>`;
+  });
+  html+="</tbody></table>";
+  wrap.innerHTML=html+`<div class="note" style="margin-top:10px"><span style="color:#f85149">Червоне</span> = ${isRoas?"факт нижчий за ціль (недотягує)":"факт CPA вищий за ціль (платимо більше)"}; <span style="color:#3fb950">зелене</span> = ${isRoas?"факт ≥ ціль":"факт ≤ ціль"}. Показані лише кампанії з активною ціллю ${isRoas?"ROAS":"CPA"} і витратами за період.</div>`;
+}
+[["roasWinSeg",b=>{ROAS_WIN=+b.dataset.w;}],["roasMetricSeg",b=>{ROAS_METRIC=b.dataset.m;}],["roasStatusSeg",b=>{ROAS_STATUS=b.dataset.s;}]].forEach(([id,fn])=>{
+  document.querySelectorAll("#"+id+" button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("#"+id+" button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); fn(b); renderRoas();
+  });
+});
+
+// ── вкладка БЮДЖЕТ ──────────────────────────────────────────────────
+let BUD_STATUS="all", BUD_WIN="yest";
+const CAP=0.9, NEAR=0.65;   // вперлись у ліміт ≥90% денного бюджету; близько ≥65%
+function renderBudget(){
+  const wrap=document.getElementById("budgetWrap"), scope=document.getElementById("budScope");
+  const camps=roasCampaigns();   // та сама вибірка кампаній (acc+платформа)
+  if(camps===null){ scope.textContent="· Bing"; wrap.innerHTML='<div class="note">Bing-кампанії готуються (наступний крок). Поки що Google Ads.</div>'; return; }
+  const yest = BUD_WIN==="yest", N = yest?1:+BUD_WIN, wkey="m"+BUD_WIN;
+  let yd="";
+  const rows=[];
+  camps.forEach(c=>{
+    const bud=c.budget||0; if(bud<=0) return;
+    let cost, conv;
+    if(yest){ const y=c.yest||{}; cost=y.cost||0; conv=y.conv||0; if(y.date) yd=y.date; }
+    else { const m=c[wkey]; if(!m) return; cost=m.cost||0; conv=m.conv||0; }
+    const avgDaily = cost/N;                 // середньодобові витрати за період
+    const ratio = avgDaily/bud;              // утилізація денного бюджету
+    const st = ratio>=CAP?"capped" : ratio>=NEAR?"near" : "ok";
+    rows.push({c, bud, cost, avgDaily, conv, ratio, st});
+  });
+  let R=rows;
+  if(BUD_STATUS==="capped") R=rows.filter(x=>x.st==="capped");
+  else if(BUD_STATUS==="near") R=rows.filter(x=>x.st==="near");
+  R.sort((a,b)=> b.cost-a.cost);
+  window._budNames=R.map(x=>x.c.name);
+  document.getElementById("budCopy").textContent=`📋 Копіювати назви (${R.length})`;
+  const accName=ACC==="ALL"?"усі 3":(DATA.accounts[ACC]||{}).name||ACC;
+  const nCap=rows.filter(x=>x.st==="capped").length, nNear=rows.filter(x=>x.st==="near").length;
+  const perLbl = yest?`вчора ${yd}`:`${N} днів (сер./день)`;
+  scope.textContent=`· ${accName} · ${perLbl} · вперлись: ${nCap} · близько: ${nNear} · показано: ${R.length}`;
+  if(!R.length){ wrap.innerHTML='<div class="note">Немає кампаній під цей фільтр.</div>'; return; }
+  const badge={capped:`<span style="color:#f85149">⛔ вперлась</span>`, near:`<span style="color:#f0883e">⚠ близько</span>`, ok:`<span class="mut2">ок</span>`};
+  const costHdr = yest?"Витрати вчора":`Витрати ${N}д`;
+  const ratioHdr = yest?"% бюджету":"сер. % бюджету/день";
+  const convHdr = yest?"Конв вчора":`Конв ${N}д`;
+  let html=`<table class="roastbl"><thead><tr><th>Кампанія</th><th>Акаунт</th><th>Тип</th><th>Бюджет/день</th><th>${costHdr}</th><th>${ratioHdr}</th><th>${convHdr}</th><th>Статус</th></tr></thead><tbody>`;
+  R.forEach(x=>{ const cls=x.st==="capped"?"bad":"";
+    html+=`<tr><td class="cn" title="${x.c.name}">${x.c.name}</td><td>${x.c.acc}</td><td class="mut2">${chShort(x.c.channel)}</td>`
+      +`<td>${fmtMoney(x.bud)}</td><td>${fmtMoney(x.cost)}</td>`
+      +`<td class="${cls}" style="${x.st==='near'?'color:#f0883e':''}"><b>${Math.round(x.ratio*100)}%</b></td>`
+      +`<td>${Math.round(x.conv)}</td><td>${badge[x.st]}</td></tr>`;
+  });
+  html+="</tbody></table>";
+  const explain = yest?`Дані за останній день (${yd}).`:`«% бюджету» = <b>середньодобові</b> витрати за ${N} днів ÷ денний бюджет (бо бюджет — денний). «Витрати ${N}д» — сума за період.`;
+  wrap.innerHTML=html+`<div class="note" style="margin-top:10px"><span style="color:#f85149">⛔ вперлась</span> = ≥${Math.round(CAP*100)}% денного бюджету; <span style="color:#f0883e">⚠ близько</span> = ≥${Math.round(NEAR*100)}%. ${explain} Сортування за витратами.</div>`;
+}
+[["budWinSeg",b=>{BUD_WIN=b.dataset.w;}],["budStatusSeg",b=>{BUD_STATUS=b.dataset.s;}]].forEach(([id,fn])=>{
+  document.querySelectorAll("#"+id+" button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("#"+id+" button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); fn(b); renderBudget();
+  });
+});
+
+// ── вкладка ПОКРИТТЯ МІСТ ────────────────────────────────────────────
+let COV_STATUS="all", COV_REGION=null, COV_WIN=90, COV_SORTCOL="pop", COV_SORTDIR=-1, COV_MINPOP=0, COV_SEARCH="", COV_CLK_OP="", COV_CLK_VAL="", COV_CONV_OP="", COV_CONV_VAL="";
+const COV_WINS=[30,90,180,360];
+async function ensureGeoRefs(){
+  if(!_US){ try{ _US=await d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"); }catch(e){} }
+  if(!_CAP){ try{ _CAP=await d3.json("https://cdn.jsdelivr.net/gh/codeforgermany/click_that_hood@main/public/data/canada.geojson"); }catch(e){ _CAP={type:"FeatureCollection",features:[]}; } }
+}
+function covRegionFeature(){ if(!COV_REGION) return null; const i=COV_REGION.indexOf("|"),cc=COV_REGION.slice(0,i),nm=COV_REGION.slice(i+1);
+  if(cc==="US"&&_US) return topojson.feature(_US,_US.objects.states).features.find(f=>f.properties.name===nm);
+  if(cc==="CA"&&_CAP) return _CAP.features.find(f=>f.properties.name===nm); return null; }
+function setCovRegion(v){ COV_REGION=(v==="ALL"||!v)?null:v; renderCoverage(); }
+function populateCovRegions(){ const sel=document.getElementById("covRegionSel"); if(!sel||sel.options.length>1) return;
+  let html=`<option value="ALL">Уся Півн. Америка</option>`;
+  if(_US){ const st=topojson.feature(_US,_US.objects.states).features.map(f=>f.properties.name).sort((a,b)=>a.localeCompare(b));
+    html+=`<optgroup label="США">`+st.map(n=>`<option value="US|${n}">${n}</option>`).join("")+`</optgroup>`; }
+  if(_CAP&&_CAP.features.length){ const pr=_CAP.features.map(f=>f.properties.name).sort((a,b)=>a.localeCompare(b));
+    html+=`<optgroup label="Канада">`+pr.map(n=>`<option value="CA|${n}">${n}</option>`).join("")+`</optgroup>`; }
+  sel.innerHTML=html; }
+function covAgg(){
+  const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC]; const m={};
+  accs.forEach(cid=>{ const cv=(DATA.accounts[cid]||{}).cov||{}; for(const k in cv){ const a=cv[k]; let t=m[k]; if(!t){t=m[k]=new Array(16).fill(0);} for(let i=0;i<a.length;i++) t[i]+=a[i]||0; } });
+  return m;
+}
+async function renderCoverage(){
+  const wrap=document.getElementById("coverageWrap"), sum=document.getElementById("covSummary");
+  await ensureGeoRefs(); populateCovRegions();
+  const csel=document.getElementById("covRegionSel"); if(csel) csel.value=COV_REGION||"ALL";
+  const allc=DATA.all_cities||[], feat=covRegionFeature();
+  const pop = feat? allc.filter(c=>d3.geoContains(feat,[c.lon,c.lat])) : allc;
+  const cov=covAgg(), ci=COV_WINS.indexOf(COV_WIN), pi=4+ci;
+  const rows=pop.map(c=>{ const a=cov[`${c.c}|${c.s}|${c.country}`];
+    const cur=a?a[ci]:0, prev=a?a[pi]:0, clk=a?(a[8+ci]||0):0;
+    const st=(cur>0&&prev>0)?"cov":(cur>0?"new":(prev>0?"lost":"none"));
+    const d=prev?(cur-prev)/prev*100:(cur>0?100:0);
+    const pen=c.pop? cur/(c.pop/100000):0, cr=clk? cur/clk*100:0;
+    return {c,cur,prev,d,st,pen,clk,cr}; });
+  const total=rows.length, used=rows.filter(r=>r.cur>0).length;
+  const nNew=rows.filter(r=>r.st==="new").length, nLost=rows.filter(r=>r.st==="lost").length;
+  window._covNames=rows.filter(r=>r.cur===0).sort((a,b)=>b.c.pop-a.c.pop).map(r=>`${r.c.c}, ${r.c.s}`);
+  document.getElementById("covCopy").textContent=`📋 Копіювати невикористані (${window._covNames.length})`;
+  let R=rows;
+  if(COV_STATUS==="uncov") R=rows.filter(r=>r.cur===0);
+  else if(COV_STATUS==="lost") R=rows.filter(r=>r.st==="lost");
+  else if(COV_STATUS==="new") R=rows.filter(r=>r.st==="new");
+  if(COV_MINPOP>0) R=R.filter(r=>r.c.pop>=COV_MINPOP);
+  if(COV_SEARCH) R=R.filter(r=>r.c.c.toLowerCase().includes(COV_SEARCH));
+  R=R.filter(r=>opMatch(r.clk,COV_CLK_OP,COV_CLK_VAL) && opMatch(r.cur,COV_CONV_OP,COV_CONV_VAL));
+  const sv=r=>({city:r.c.c,state:r.c.s,pop:r.c.pop,clk:r.clk,cur:r.cur,prev:r.prev,d:r.d,cr:r.cr,pen:r.pen,st:r.st}[COV_SORTCOL]);
+  R.sort((a,b)=>{ const x=sv(a),y=sv(b); if(typeof x==="string") return COV_SORTDIR*x.localeCompare(y); return COV_SORTDIR*((x||0)-(y||0)); });
+  const accName=ACC==="ALL"?"усі 3":(DATA.accounts[ACC]||{}).name||ACC, pct=total?Math.round(used/total*100):0;
+  sum.innerHTML=`<b>${accName}</b> · період <b>${COV_WIN} днів</b> · використовуємо <b>${used} з ${total}</b> міст = <b style="color:#58a6ff">${pct}%</b>`
+    +` · <span style="color:#f0883e">не використовуємо ${total-used}</span> · <span style="color:#3fb950">🆕 ${nNew}</span> · <span style="color:#f85149">⚠ втрачено ${nLost}</span>`
+    +` · <span class="mut2">Δ — vs попередні ${COV_WIN} днів</span>`;
+  const badge={cov:'<span style="color:#3fb950">✓ є</span>',none:'<span style="color:#f0883e">🟠 0</span>',new:'<span style="color:#58a6ff">🆕 новий</span>',lost:'<span style="color:#f85149">⚠ втрачено</span>'};
+  const LIM=2000, shown=R.slice(0,LIM), maxPen=Math.max(1, d3.max(shown,r=>r.pen)||1);
+  let html=`<table class="roastbl"><thead><tr>${[["city","Місто"],["state","Штат"],["pop","Населення"],["clk","Кліки "+COV_WIN+"д"],["cur","Конв "+COV_WIN+"д"],["prev","Конв поп."+COV_WIN+"д"],["d","Δ"],["cr","CR%"],["pen","Конв/100k"],["st","Статус"]].map(([c,l])=>`<th onclick="covSortBy('${c}')" style="cursor:pointer">${l}${COV_SORTCOL===c?(COV_SORTDIR<0?" ▼":" ▲"):""}</th>`).join("")}</tr></thead><tbody>`;
+  shown.forEach(r=>{ const dcls=r.d<0?"bad":(r.d>0?"good":"");
+    const penW=Math.min(100, r.pen/maxPen*100);
+    const penCell = r.cur>0 ? `<div style="position:relative;min-width:54px"><div style="position:absolute;inset:0;background:#3fb95033;width:${penW}%;border-radius:3px"></div><span style="position:relative">${r.pen.toFixed(1)}</span></div>` : `<span class="mut2">0</span>`;
+    html+=`<tr><td class="cn">${r.c.c}</td><td>${r.c.s}</td><td>${r.c.pop.toLocaleString("en-US")}</td>`
+      +`<td>${r.clk?Math.round(r.clk).toLocaleString("en-US"):'<span class=mut2>0</span>'}</td>`
+      +`<td>${r.cur?Math.round(r.cur):'<span class=mut2>0</span>'}</td><td>${r.prev?Math.round(r.prev):'<span class=mut2>0</span>'}</td>`
+      +`<td class="${dcls}">${(r.prev&&r.cur)?(r.d>=0?'+':'')+r.d.toFixed(0)+'%':'—'}</td>`
+      +`<td>${r.clk?r.cr.toFixed(1)+'%':'<span class=mut2>—</span>'}</td><td>${penCell}</td><td>${badge[r.st]}</td></tr>`;
+  });
+  html+="</tbody></table>";
+  const trunc = R.length>LIM? `<div class="note" style="margin-top:8px">Показано перші ${LIM} з ${R.length}. Звузь фільтром/регіоном/сортуванням.</div>`:"";
+  wrap.innerHTML=html+trunc+`<div class="note" style="margin-top:10px"><b>Конв/100k</b> = конверсії на 100 тис. населення за період (шкала проникнення: вища смужка = краще використовуємо місто; 0 = не торкаємось). «Не використовуємо» = 0 конверсій за період. Δ — проти попередніх ${COV_WIN} днів. 📋 копіює всі невикористані міста для таргетингу.</div>`;
+}
+function opMatch(v,op,t){ if(!op||t===""||t===null) return true; t=+t; if(isNaN(t)) return true; v=Math.round(v||0);
+  return op===">"?v>t:op===">="?v>=t:op==="="?v===t:op==="<="?v<=t:op==="<"?v<t:true; }
+function covFilterChg(){ COV_CLK_OP=document.getElementById("covClkOp").value; COV_CLK_VAL=document.getElementById("covClkVal").value;
+  COV_CONV_OP=document.getElementById("covConvOp").value; COV_CONV_VAL=document.getElementById("covConvVal").value;
+  clearTimeout(_covT); _covT=setTimeout(renderCoverage,250); }
+var _covT=null;
+function covSortBy(col){ if(COV_SORTCOL===col) COV_SORTDIR*=-1; else { COV_SORTCOL=col; COV_SORTDIR=(col==="city"||col==="state")?1:-1; } renderCoverage(); }
+function covMinPopChg(v){ COV_MINPOP=+v||0; clearTimeout(_covT); _covT=setTimeout(renderCoverage,250); }
+function covSearchChg(v){ COV_SEARCH=(v||"").toLowerCase().trim(); clearTimeout(_covT); _covT=setTimeout(renderCoverage,250); }
+[["covWinSeg",b=>{COV_WIN=+b.dataset.w;}],["covStatusSeg",b=>{COV_STATUS=b.dataset.s;}]].forEach(([id,fn])=>{
+  document.querySelectorAll("#"+id+" button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("#"+id+" button").forEach(x=>x.classList.remove("active"));
+    b.classList.add("active"); fn(b); renderCoverage();
+  });
+});
+
+// ── вкладка ТОВАРИ (Merchant Center) ────────────────────────────────
+function renderMerchant(){
+  const wrap=document.getElementById("merchantWrap"), scope=document.getElementById("mktScope");
+  const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  scope.textContent = `· ${ACC==="ALL"?"усі 3":(DATA.accounts[ACC]||{}).name||ACC} · Shopping`;
+  const cards = accs.map(cid=>{
+    const a=DATA.accounts[cid]||{}, m=a.merchant;
+    const nm=(a.name||cid).replace(/ .*/,"");
+    if(!m) return `<div class="fcard"><div class="fhead"><b>${nm}</b></div><div class="note">Немає даних Merchant Center.</div></div>`;
+    const total=m.active+m.disapproved, pct= total? m.disapproved/total*100:0;
+    const accIss = (m.account_issues&&m.account_issues.length)
+      ? `<div class="note" style="border-color:#f85149;color:#f85149;margin:8px 0">⚠ Проблеми акаунта: ${m.account_issues.join("; ")}</div>`:"";
+    let rowsH="";
+    (m.issues||[]).forEach(it=>{
+      const bad=it.serv==="disapproved";
+      rowsH+=`<tr><td class="cn">${it.desc}</td><td class="mut2">${it.attr||"—"}</td>`
+        +`<td><b>${it.n.toLocaleString("en-US")}</b></td>`
+        +`<td class="${bad?'bad':''}">${bad?'⛔ відхиляє':'<span class="mut2">⚠ попередження</span>'}</td></tr>`;
+    });
+    return `<div class="fcard">
+      <div class="fhead"><b>${nm}</b>
+        <span class="fcr">✓ активних ${m.active.toLocaleString("en-US")} · <span style="color:#f85149">⛔ відхилено ${m.disapproved.toLocaleString("en-US")} (${pct.toFixed(1)}%)</span></span>
+        <span class="fsub">Merchant ${m.mid}${m.pending?` · pending ${m.pending}`:""}${m.expiring?` · expiring ${m.expiring}`:""}</span>
+      </div>${accIss}
+      <table class="roastbl"><thead><tr><th>Проблема</th><th>Атрибут</th><th>К-сть товарів</th><th>Вплив</th></tr></thead><tbody>${rowsH}</tbody></table>
+    </div>`;
+  }).join("");
+  // ── список конкретних проблемних товарів (вибірка) ──
+  let prodRows="", urls=[];
+  accs.forEach(cid=>{ const a=DATA.accounts[cid]||{}, nm=(a.name||cid).replace(/ .*/,"");
+    (a.bad_products||[]).forEach(p=>{ urls.push(p.url);
+      prodRows+=`<tr><td>${nm}</td><td class="cn" title="${(p.title||'').replace(/"/g,'')}">${p.title||p.id}</td>`
+        +`<td class="mut2">${p.id}</td><td class="bad">${p.label}</td><td class="mut2">${p.country||''}</td>`
+        +`<td><a href="${p.url}" target="_blank" rel="noopener" style="color:#58a6ff">відкрити ↗</a></td></tr>`; });
+  });
+  window._mktUrls=urls;
+  const prodTbl = prodRows ? `<div class="section-title" style="margin:20px 0 8px">🔎 Приклади проблемних товарів <span class="sub">(вибірка ${urls.length} шт. — для перевірки патерну; повний перелік у Merchant Center)</span>
+      <button class="apply" onclick="copyText((window._mktUrls||[]).join('\n'),this)" style="margin-left:12px">📋 Копіювати URL (${urls.length})</button></div>
+    <table class="roastbl"><thead><tr><th>Акаунт</th><th>Товар</th><th>SKU</th><th>Причина</th><th>Країна</th><th>Сторінка</th></tr></thead><tbody>${prodRows}</tbody></table>` : "";
+  wrap.innerHTML = cards + `<div class="note" style="margin-top:12px"><span style="color:#f85149">⛔ відхиляє</span> = товари не показуються в Shopping (треба чинити); <span class="mut2">⚠ попередження</span> = поки показуються, але є ризик. Дані Shopping/US із Merchant Center.</div>` + prodTbl;
+}
+document.querySelectorAll("#chSeg button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#chSeg button").forEach(x=>x.classList.remove("active"));
+  b.classList.add("active"); TYPE=b.dataset.type; CH=resolveCH(); render();
+});
+function setPlatform(pf){
+  PLATFORM=pf;
+  document.querySelectorAll("#pfSeg button").forEach(x=>x.classList.toggle("active", x.dataset.pf===pf));
+  CH=resolveCH(); refresh();
+}
+document.querySelectorAll("#pfSeg button").forEach(b=>b.onclick=()=>setPlatform(b.dataset.pf));
+
+// ── вкладка КАРТА ───────────────────────────────────────────────────
+function setView(v){
+  VIEW=v;
+  document.querySelectorAll("#viewSeg button").forEach(x=>x.classList.toggle("active", x.dataset.view===v));
+  document.getElementById("dashView").classList.toggle("hidden", v!=="dash");
+  document.getElementById("mapView").classList.toggle("hidden", v!=="map");
+  document.getElementById("funnelView").classList.toggle("hidden", v!=="funnel");
+  document.getElementById("roasView").classList.toggle("hidden", v!=="roas");
+  document.getElementById("budgetView").classList.toggle("hidden", v!=="budget");
+  document.getElementById("coverageView").classList.toggle("hidden", v!=="coverage");
+  document.getElementById("merchantView").classList.toggle("hidden", v!=="merchant");
+  const dash = v==="dash";
+  document.getElementById("typeLabel").style.display = dash?"":"none";
+  document.getElementById("chSeg").style.display = dash?"":"none";
+  // у воронці свій фільтр трафіку — глобальну платформу ховаємо
+  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant";
+  document.getElementById("platLabel").style.display = showPlat?"":"none";
+  document.getElementById("pfSeg").style.display = showPlat?"":"none";
+  refresh();
+}
+document.querySelectorAll("#viewSeg button").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+function mapCities(){
+  const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  const key = PLATFORM==="BING" ? "geo_cities_bing" : "geo_cities";
+  const m={};
+  accs.forEach(cid=>{ (DATA.accounts[cid][key]||[]).forEach(p=>{
+    const k=p.c+"|"+p.s, e=m[k]||(m[k]={c:p.c,s:p.s,country:p.country||"US",lat:p.lat,lon:p.lon,pop:p.pop||0,conv:0,val:0});
+    e.conv+=p.conv; e.val+=p.val; if(p.pop) e.pop=p.pop; }); });
+  return Object.values(m);
+}
+function togglePop(){ POP_ON=document.getElementById("popChk").checked; renderMap(); }
+function toggleAllCities(){ ALLCITIES_ON=document.getElementById("allCitiesChk").checked; renderMap(); }
+// нормалізація назв міст для зіставлення конверсій ↔ населення (акценти, аліаси)
+function nrm(s){ return (s||"").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")
+  .replace(/\bst\.?\b/g,"saint").replace(/^new york city$/,"new york").trim(); }
+// чи місто покрите конверсіями: є точка конверсій у радіусі ~25 км (ловить райони всередині міст)
+function nearConv(d, pts){ if(!pts) return false; const cl=Math.cos(d.lat*Math.PI/180);
+  for(const p of pts){ const dx=(p[0]-d.lon)*cl*111, dy=(p[1]-d.lat)*111; if(dx*dx+dy*dy<625) return true; } return false; }
+
+// ── Leaflet карта (тайли з назвами міст) ────────────────────────────
+let _LMAP=null, _LCONV=null, _LPOP=null, _LALL=null;
+function ensureMap(){
+  if(_LMAP) return;
+  _LMAP=L.map('lmap',{worldCopyJump:false,minZoom:3,maxZoom:14,zoomControl:true}).setView([39.5,-96],4);
+  // Esri (ArcGIS, US) — темна база + шар підписів міст, без API-ключа
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    {attribution:'Tiles © Esri', maxZoom:16}).addTo(_LMAP);
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}',
+    {maxZoom:16}).addTo(_LMAP);
+  _LALL=L.layerGroup().addTo(_LMAP); _LCONV=L.layerGroup().addTo(_LMAP); _LPOP=L.layerGroup().addTo(_LMAP);
+}
+function regionFeature(){
+  if(!MAP_REGION) return null;
+  const i=MAP_REGION.indexOf("|"), cc=MAP_REGION.slice(0,i), name=MAP_REGION.slice(i+1);
+  if(cc==="US"&&_US){ return topojson.feature(_US,_US.objects.states).features.find(f=>f.properties.name===name); }
+  if(cc==="CA"&&_CAP){ return _CAP.features.find(f=>f.properties.name===name); }
+  return null;
+}
+function populateRegions(){
+  const sel=document.getElementById("regionSel"); if(!sel||sel.options.length>1) return;
+  let html=`<option value="ALL">Уся Півн. Америка</option>`;
+  if(_US){ const st=topojson.feature(_US,_US.objects.states).features.map(f=>f.properties.name).sort((a,b)=>a.localeCompare(b));
+    html+=`<optgroup label="США">`+st.map(n=>`<option value="US|${n}">${n}</option>`).join("")+`</optgroup>`; }
+  if(_CAP&&_CAP.features.length){ const pr=_CAP.features.map(f=>f.properties.name).sort((a,b)=>a.localeCompare(b));
+    html+=`<optgroup label="Канада">`+pr.map(n=>`<option value="CA|${n}">${n}</option>`).join("")+`</optgroup>`; }
+  sel.innerHTML=html;
+}
+function setRegion(v){ MAP_REGION=(v==="ALL"||!v)?null:v; renderMap(); }
+function toggleMapFull(){
+  const m=document.getElementById("lmap"), b=document.getElementById("mapFullBtn");
+  const on=m.classList.toggle("full"); b.classList.toggle("on",on);
+  b.textContent = on ? "✕ Згорнути" : "⛶ На весь екран";
+  setTimeout(()=>{ if(_LMAP){ _LMAP.invalidateSize(false); } },220);
+}
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ const m=document.getElementById("lmap"); if(m&&m.classList.contains("full")) toggleMapFull(); }});
+async function renderMap(){
+  const scope=document.getElementById("mapScope"), legend=document.getElementById("mapLegend"), stats=document.getElementById("mapStats");
+  ensureMap(); _LMAP.invalidateSize(false); setTimeout(()=>_LMAP.invalidateSize(false),60);
+  if(PLATFORM==="BING"){ _LCONV.clearLayers(); _LPOP.clearLayers(); scope.textContent="· Bing"; stats.innerHTML=""; legend.innerHTML="Bing-гео потребує окремої вигрузки (MCP не дає конверсії по містах)."; return; }
+  if(!_US){ try{ _US=await d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"); }catch(e){} }
+  if(!_CAP){ try{ _CAP=await d3.json("https://cdn.jsdelivr.net/gh/codeforgermany/click_that_hood@main/public/data/canada.geojson"); }catch(e){ _CAP={type:"FeatureCollection",features:[]}; } }
+  populateRegions();
+  const rsel=document.getElementById("regionSel"); if(rsel) rsel.value=MAP_REGION||"ALL";
+  let cities=mapCities();
+  const popAll=DATA.pop_cities||[];
+  const convSet=new Set(cities.filter(c=>c.conv>0).map(c=>(c.country||"US")+"|"+nrm(c.c)));
+  const convPtsAll=cities.filter(c=>c.conv>0).map(c=>[c.lon,c.lat]);
+  const feat=regionFeature();
+  let pop=popAll;
+  if(feat){ cities=cities.filter(c=>d3.geoContains(feat,[c.lon,c.lat])); pop=popAll.filter(c=>d3.geoContains(feat,[c.lon,c.lat])); }
+  // конверсії
+  _LALL.clearLayers();
+  if(ALLCITIES_ON){
+    let allc = DATA.all_cities||[];
+    if(feat) allc = allc.filter(c=>d3.geoContains(feat,[c.lon,c.lat]));
+    const maxAp = Math.max(1, d3.max(allc,c=>c.pop)||1);
+    allc.forEach(c=>{ const r=Math.max(2, Math.sqrt(c.pop/maxAp)*16);
+      L.circleMarker([c.lat,c.lon],{radius:r,color:"#a371f7",weight:0,fillColor:"#a371f7",fillOpacity:0.45})
+        .bindTooltip(`<b>${c.c}, ${c.s}</b><br>населення ${c.pop.toLocaleString("en-US")}`,{sticky:true}).addTo(_LALL);
+    });
+  }
+  _LCONV.clearLayers(); _LPOP.clearLayers();
+  const withConv=cities.filter(c=>c.conv>0), maxc=Math.max(1,d3.max(withConv,c=>c.conv)||1);
+  withConv.sort((a,b)=>b.conv-a.conv).forEach(c=>{
+    const r=Math.max(3,Math.sqrt(c.conv/maxc)*22);
+    L.circleMarker([c.lat,c.lon],{radius:r,color:"#58a6ff",weight:1,fillColor:"#58a6ff",fillOpacity:0.45})
+      .bindTooltip(`<b>${c.c}, ${c.s}</b><br>${Math.round(c.conv)} конв`+(c.pop?` · нас. ${c.pop.toLocaleString("en-US")}`:""),{sticky:true}).addTo(_LCONV);
+  });
+  // втрачені (населення без конверсій)
+  let lost=[];
+  if(POP_ON){
+    pop.forEach(p=>{ if(convSet.has((p.country||"US")+"|"+nrm(p.c))||nearConv(p,convPtsAll)) return; lost.push(p);
+      L.circleMarker([p.lat,p.lon],{radius:Math.max(5,Math.sqrt(p.pop/8e6)*26),color:"#f0883e",weight:1.4,fillColor:"#f0883e",fillOpacity:0.28})
+        .bindTooltip(`<b>${p.c}, ${p.s}</b><br>населення ${p.pop.toLocaleString("en-US")} · конверсій НЕМАЄ`,{sticky:true}).addTo(_LPOP);
+    });
+    lost.sort((a,b)=>b.pop-a.pop);
+  }
+  if(feat){ const b=d3.geoBounds(feat); const lb=L.latLngBounds([[b[0][1],b[0][0]],[b[1][1],b[1][0]]]);
+    _LMAP.invalidateSize(false); setTimeout(()=>{ _LMAP.invalidateSize(false); if(_LMAP.getSize().x>50) _LMAP.fitBounds(lb,{padding:[25,25],maxZoom:8,animate:false}); },140); }
+  const accName=ACC==="ALL"?"Усі 3":DATA.accounts[ACC].name;
+  const totConv=Math.round(withConv.reduce((s,c)=>s+c.conv,0));
+  const regLbl=feat?MAP_REGION.slice(MAP_REGION.indexOf("|")+1):"уся Півн. Америка";
+  scope.textContent=`· ${accName} · ${regLbl} · ${withConv.length} міст · ${totConv.toLocaleString("en-US")} конв`;
+  const top=withConv.slice(0,6).map(c=>`${c.c} (${Math.round(c.conv)})`).join(", ");
+  stats.innerHTML=`<b>${totConv.toLocaleString("en-US")}</b> конв · міст: <b>${withConv.length}</b>`+(top?` · топ: ${top}`:"")
+    +(POP_ON?(lost.length?` · <span style="color:#f0883e">🟠 без конв (${lost.length}): ${lost.slice(0,8).map(c=>c.c).join(", ")}${lost.length>8?` +${lost.length-8}`:""}</span>`:` · <span style="color:#3fb950">дір серед великих міст нема</span>`):"");
+  legend.innerHTML=`🔵 Сині — конверсії (розмір ∝ к-сті). `+(ALLCITIES_ON?`🟣 Фіолетові — всі міста (розмір ∝ населенню). `:``)+(POP_ON?`🟠 Помаранчеві — великі міста БЕЗ конверсій (втрачені). `:``)+`Наведи на кружечок — деталі. Зум/перетягуй як у Google Maps; вибери регіон у списку.`;
+}
+
+function showApp(){
+  document.getElementById("refDate").textContent=DATA.reference_date;
+  document.getElementById("genAt").textContent=(DATA.generated_at||"").replace("T"," ").slice(0,16);
+  if(DATA.stale&&DATA.stale.length){
+    document.getElementById("staleNote").innerHTML=` <span class="stale">⚠ ${DATA.stale.length} днів з кешу (ліміт API)</span>`;
+  }
+  document.getElementById("gate").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+  buildAccSeg();
+  render();
+}
+
+// ── розшифрування payload (WebCrypto: PBKDF2-SHA256 + AES-GCM) ───────
+const b64dec=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function decryptPayload(enc,password){
+  const salt=b64dec(enc.salt), iv=b64dec(enc.iv), ct=b64dec(enc.ct);
+  const baseKey=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);
+  const key=await crypto.subtle.deriveKey(
+    {name:"PBKDF2",salt,iterations:enc.iter||200000,hash:"SHA-256"},
+    baseKey,{name:"AES-GCM",length:256},false,["decrypt"]);
+  const pt=await crypto.subtle.decrypt({name:"AES-GCM",iv},key,ct);
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+async function loadData(pw){               // завантажити+розшифрувати свіжі дані
+  let enc=null;
+  const r=await fetch("data.enc?t="+Date.now());
+  if(r.ok) enc=await r.json();
+  if(enc){ DATA=await decryptPayload(enc,pw); }           // невірний пароль → throw
+  else { DATA=await (await fetch("data.json?t="+Date.now())).json(); } // dev fallback
+  // кеш у sessionStorage опціональний — дані великі (>5MB), квота може бути перевищена; не ламаємо завантаження
+  try{ sessionStorage.setItem("data",JSON.stringify(DATA)); if(pw) sessionStorage.setItem("pw",pw); }
+  catch(e){ try{ sessionStorage.removeItem("data"); if(pw) sessionStorage.setItem("pw",pw); }catch(_){} }
+}
+async function tryUnlock(){
+  const pw=document.getElementById("pw").value;
+  const err=document.getElementById("gateErr"); err.textContent="…";
+  try{ await loadData(pw); err.textContent=""; showApp(); }
+  catch(e){ err.textContent="Невірний пароль"; }
+}
+document.getElementById("pw").addEventListener("keydown",e=>{if(e.key==="Enter")tryUnlock();});
+
+// відновлення сесії: миттєво показати кеш, але мовчки перезавантажити свіжі дані.
+// без збереженого пароля (старий кеш) — НЕ показувати кеш, вимагати ввід (щоб не висіли застарілі дані).
+const cached=sessionStorage.getItem("data"), cpw=sessionStorage.getItem("pw");
+if(cached && cpw){ try{ DATA=JSON.parse(cached); showApp(); }catch(e){} }
+if(cpw){ loadData(cpw).then(()=>{ if(DATA && typeof refresh==="function") refresh(); }).catch(()=>{}); }
+</script>
+</body>
+</html>
