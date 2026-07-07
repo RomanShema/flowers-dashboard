@@ -191,11 +191,18 @@
   <div id="sqWrap"></div>
 
   <div class="section-title">PMax-запити із завантаженого звіту <span class="sub" id="pmaxUpScope"></span></div>
+  <div class="metctl" style="margin:2px 0 8px;flex-wrap:wrap;gap:8px">
+    <span class="label">Проєкт</span><select id="pmaxUpProj"></select>
+    <span class="label">Платформа</span><select id="pmaxUpPlat"><option value="GOOGLE">Google Ads</option><option value="BING">Bing</option></select>
+    <span class="label">Період</span>
+    <input type="date" id="pmaxUpStart" style="width:140px"> <span class="mut">—</span> <input type="date" id="pmaxUpEnd" style="width:140px">
+  </div>
   <div class="metctl" style="margin:2px 0 10px;flex-wrap:wrap;gap:8px">
     <button class="apply" onclick="pmaxHelp()">❓ Як зробити звіт</button>
     <label class="apply" style="cursor:pointer">⬆ Завантажити PMax CSV<input type="file" accept=".csv,text/csv" onchange="pmaxUpload(this)" style="display:none"></label>
+    <button class="apply" id="pmaxSaveBtn" onclick="pmaxSaveSnapshot()" style="display:none">💾 Зберегти знімок (у сховище)</button>
     <button class="apply" id="pmaxNegCopy" onclick="copyText((window._pmaxNeg||[]).join('\n'),this)" style="display:none">📋 Копіювати нецільові</button>
-    <span class="sub" id="pmaxUpNote">Завантаж CSV із PMax-запитами — покажу розподіл по категоріях окремо (donut + таблиця + кандидати в мінус). Дані нікуди не зберігаються.</span>
+    <span class="sub" id="pmaxUpNote">Обери проєкт + платформу, завантаж CSV — покажу розподіл по PMax окремо. Період підтягну з файлу (можна виправити). Для збереження назавжди — 💾.</span>
   </div>
   <div id="pmaxHelpBox" class="sub hidden" style="margin:0 0 12px;line-height:1.6"></div>
   <div id="pmaxUpWrap"></div>
@@ -786,8 +793,17 @@ function pmaxRender(rows, fname){
   const sq={total_clicks:total,cats:{}};
   SQ.forEach(([k])=>{ const c=cats[k]; sq.cats[k]={terms:c.terms,share_clicks: total?+(c.clicks/total*100).toFixed(1):0,
     clicks:Math.round(c.clicks),cost:Math.round(c.cost),conv:+c.conv.toFixed(1),roas:c.cost?+(c.value/c.cost).toFixed(2):0}; });
-  scope.textContent=`· ${fname||"файл"} · ${pmaxRows.toLocaleString("en-US")} PMax-рядків · ${terms.length.toLocaleString("en-US")} унік. запитів · ${Math.round(total).toLocaleString("en-US")} кліків`;
-  note.textContent="✓ готово. Дані лише у цьому вікні, не зберігаються.";
+  window._pmaxTerms=terms;  // для збереження знімка
+  // період з файлу → у поля (можна виправити вручну)
+  const per=pmaxDetectPeriod(rows, hi);
+  if(per){ document.getElementById("pmaxUpStart").value=per.start; document.getElementById("pmaxUpEnd").value=per.end; }
+  const projName=(document.getElementById("pmaxUpProj").selectedOptions[0]||{}).text||"";
+  const plat=document.getElementById("pmaxUpPlat").value==="BING"?"Bing":"Google";
+  const perTxt=(document.getElementById("pmaxUpStart").value&&document.getElementById("pmaxUpEnd").value)
+    ? `${document.getElementById("pmaxUpStart").value}…${document.getElementById("pmaxUpEnd").value}` : "період не визначено";
+  scope.textContent=`· ${projName} · ${plat} · ${perTxt} · ${pmaxRows.toLocaleString("en-US")} PMax-рядків · ${terms.length.toLocaleString("en-US")} запитів · ${Math.round(total).toLocaleString("en-US")} кліків`;
+  note.textContent=per?"✓ готово. Період підтягнув із файлу. Натисни 💾, щоб зберегти назавжди.":"✓ готово. Дату з файлу не знайшов — впиши період вручну, тоді 💾.";
+  document.getElementById("pmaxSaveBtn").style.display="";
   // легенда + таблиця (як у Search)
   const vis=SQ.filter(([k])=>sq.cats[k].clicks>0||sq.cats[k].terms>0);
   const leg=vis.filter(([k])=>sq.cats[k].share_clicks>0).map(([k,n,c])=>`<div class="it"><span class="dot" style="background:${c}"></span>${n} <b>${sq.cats[k].share_clicks}%</b></div>`).join("");
@@ -809,6 +825,50 @@ function pmaxRender(rows, fname){
     <div class="sub" style="margin-top:16px">Топ PMax-запитів за кліками:</div>
     <table class="roastbl" style="margin-top:6px"><thead><tr><th>Запит</th><th>Категорія</th><th>Кліки</th><th>Покази</th><th>Витрати</th><th>Конв</th><th>ROAS</th></tr></thead><tbody>${topRows}</tbody></table>
     <div class="sub" style="margin-top:6px">Категоризація — евристична (гео через довідник міст дашборда). Для точної — можна прогнати через повний класифікатор.</div>`;
+}
+
+// ── метадані уплоаду: проєкт, платформа, період з файлу, збереження ──
+function pmaxUpInit(){
+  const sel=document.getElementById("pmaxUpProj"); if(!sel||sel.options.length) return;
+  sel.innerHTML=Object.entries(DATA.accounts).map(([id,a])=>`<option value="${id}">${a.name.replace(/ .*/,"")}</option>`).join("");
+  sel.onchange=()=>{ if(window._pmaxTerms) { /* оновити підпис проєкту без переобробки */ } };
+}
+const _PMAX_MON={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+function pmaxParseDate(s){ s=(s||"").trim();
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m=s.match(/([A-Za-z]{3,})\s+(\d{1,2}),?\s+(\d{4})/); if(m){ const mo=_PMAX_MON[m[1].slice(0,3).toLowerCase()]; if(mo) return `${m[3]}-${String(mo).padStart(2,"0")}-${String(+m[2]).padStart(2,"0")}`; }
+  m=s.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/); if(m) return `${m[3]}-${String(+m[1]).padStart(2,"0")}-${String(+m[2]).padStart(2,"0")}`;
+  return null;
+}
+function pmaxDetectPeriod(rows, hi){
+  const H=rows[hi].map(h=>(h||"").toLowerCase().trim());
+  let di=H.findIndex(h=>h==="day"||h==="date"||h.includes("день")||h.includes("дата"));
+  if(di>=0){ let mn=null,mx=null;
+    for(let i=hi+1;i<rows.length;i++){ const d=pmaxParseDate((rows[i]||[])[di]); if(!d)continue; if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; }
+    if(mn&&mx) return {start:mn,end:mx};
+  }
+  for(let i=0;i<=hi;i++){ const line=(rows[i]||[]).join(" ");
+    const m=line.match(/([A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})\s*(?:[-–—]|to)\s*([A-Za-z]{3,}\s+\d{1,2},?\s+\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}\/\d{4})/);
+    if(m){ const a=pmaxParseDate(m[1]), b=pmaxParseDate(m[2]); if(a&&b) return {start:a<b?a:b,end:a<b?b:a}; }
+  }
+  return null;
+}
+function pmaxSaveSnapshot(){
+  const proj=document.getElementById("pmaxUpProj").value;
+  const slug={"2650994843":"blossom","1451880631":"sunny","7190249166":"f4h"}[proj]||"proj";
+  const plat=document.getElementById("pmaxUpPlat").value.toLowerCase();
+  const s=document.getElementById("pmaxUpStart").value, e=document.getElementById("pmaxUpEnd").value;
+  if(!s||!e){ alert("Впиши період (Початок і Кінець) — без нього знімок не зберегти."); return; }
+  const terms=window._pmaxTerms||[];
+  if(!terms.length){ alert("Спершу завантаж CSV."); return; }
+  const rows=[["Search term","Campaign type","Clicks","Impr.","Cost","Conversions","Conv. value"]];
+  terms.forEach(t=>rows.push([t.t,"Performance Max",t.clk,t.imp,t.cost,t.cv,t.val]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
+  a.download=`${slug}_${plat}_${s}_${e}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  document.getElementById("pmaxUpNote").innerHTML=`💾 Файл <b>${a.download}</b> завантажено. Поклади його в папку <b>pmax_uploads/</b> (або надішли мені) — і знімок збережеться в дашборді назавжди для всіх.`;
 }
 
 // ── збережені знімки PMax (з data.json.pmax_snapshots, спільні для всіх) ──
@@ -1413,6 +1473,7 @@ function showApp(){
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
   buildAccSeg();
+  pmaxUpInit();
   render();
 }
 
