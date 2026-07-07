@@ -202,7 +202,7 @@
     <label class="apply" style="cursor:pointer">⬆ Завантажити PMax CSV<input type="file" accept=".csv,text/csv" onchange="pmaxUpload(this)" style="display:none"></label>
     <button class="apply" id="pmaxSaveBtn" onclick="pmaxSaveSnapshot()" style="display:none">💾 Зберегти знімок (у сховище)</button>
     <button class="apply" id="pmaxNegCopy" onclick="copyText((window._pmaxNeg||[]).join('\n'),this)" style="display:none">📋 Копіювати нецільові</button>
-    <span class="sub" id="pmaxUpNote">Обери проєкт + платформу, завантаж CSV — покажу розподіл по PMax окремо. Період підтягну з файлу (можна виправити). Для збереження назавжди — 💾.</span>
+    <span class="sub" id="pmaxUpNote">Натисни «Завантажити PMax CSV» → спитаю, для якого сайту → покажу розподіл. Період візьму з файлу. Далі 💾 — зберегти для всіх.</span>
   </div>
   <div id="pmaxHelpBox" class="sub hidden" style="margin:0 0 12px;line-height:1.6"></div>
   <div id="pmaxUpWrap"></div>
@@ -213,6 +213,23 @@
     <select id="pmaxSnapSel" onchange="pmaxSnapRender()"></select>
   </div>
   <div id="pmaxSnapWrap"></div>
+
+  <div id="pmaxAsk" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:24px;max-width:440px;width:90%">
+      <div style="font-size:17px;font-weight:600;margin-bottom:4px">Для якого сайту цей звіт?</div>
+      <div class="sub" id="pmaxAskFile" style="margin-bottom:16px"></div>
+      <div class="sub" style="margin-bottom:6px">Сайт (проєкт):</div>
+      <div class="seg" id="pmaxAskProj" style="margin-bottom:16px;flex-wrap:wrap"></div>
+      <div class="sub" style="margin-bottom:6px">Платформа:</div>
+      <div class="seg" id="pmaxAskPlat" style="margin-bottom:20px">
+        <button data-p="GOOGLE" class="active">Google Ads</button><button data-p="BING">Bing</button>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button class="apply" onclick="pmaxAskCancel()">Скасувати</button>
+        <button class="apply" id="pmaxAskGo" onclick="pmaxAskConfirm()" style="background:var(--accent);color:#0d1117;border-color:var(--accent);font-weight:600">Завантажити →</button>
+      </div>
+    </div>
+  </div>
   </div><!-- /dashView -->
 
   <div id="mapView" class="hidden">
@@ -743,12 +760,30 @@ function pmaxClassify(term){
   if(/(flower|bouquet|floral|arrangement|flores|fleur|ramo|basket|centerpiece)/.test(t)) return "generic";
   return "nontarget";
 }
+let _pmaxPendingFile=null, _pmaxAskProj=null, _pmaxAskPlat="GOOGLE";
 function pmaxUpload(input){
-  const f=input.files&&input.files[0]; if(!f) return;
+  const f=input.files&&input.files[0]; input.value=""; if(!f) return;
+  _pmaxPendingFile=f; _pmaxAskProj=null;
+  document.getElementById("pmaxAskFile").textContent="Файл: "+f.name;
+  const pw=document.getElementById("pmaxAskProj");
+  pw.innerHTML=Object.entries(DATA.accounts).map(([id,a])=>`<button data-id="${id}">${a.name.replace(/ .*/,"")}</button>`).join("");
+  pw.querySelectorAll("button").forEach(b=>b.onclick=()=>{ pw.querySelectorAll("button").forEach(x=>x.classList.remove("active")); b.classList.add("active"); _pmaxAskProj=b.dataset.id; });
+  const pl=document.getElementById("pmaxAskPlat");
+  pl.querySelectorAll("button").forEach(b=>{ b.onclick=()=>{ pl.querySelectorAll("button").forEach(x=>x.classList.remove("active")); b.classList.add("active"); _pmaxAskPlat=b.dataset.p; }; b.classList.toggle("active", b.dataset.p==="GOOGLE"); });
+  _pmaxAskPlat="GOOGLE";
+  document.getElementById("pmaxAsk").classList.remove("hidden");
+}
+function pmaxAskCancel(){ document.getElementById("pmaxAsk").classList.add("hidden"); _pmaxPendingFile=null; }
+function pmaxAskConfirm(){
+  if(!_pmaxAskProj){ alert("Спершу вибери сайт (проєкт)."); return; }
+  document.getElementById("pmaxUpProj").value=_pmaxAskProj;
+  document.getElementById("pmaxUpPlat").value=_pmaxAskPlat;
+  document.getElementById("pmaxAsk").classList.add("hidden");
+  const f=_pmaxPendingFile; _pmaxPendingFile=null; if(!f) return;
   const note=document.getElementById("pmaxUpNote"); note.textContent="читаю "+f.name+"…";
   const r=new FileReader();
   r.onload=()=>{ try{ pmaxRender(csvParse(r.result), f.name); }catch(e){ note.textContent="Помилка розбору: "+e.message; document.getElementById("pmaxUpWrap").innerHTML=""; } };
-  r.readAsText(f); input.value="";
+  r.readAsText(f);
 }
 function pmaxColIdx(hdr){
   const H=hdr.map(h=>h.toLowerCase().trim());
