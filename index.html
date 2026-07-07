@@ -815,6 +815,11 @@ function pmaxRender(rows, fname){
   document.getElementById("pmaxNegCopy").style.display = neg.length?"":"none";
   const negChips=neg.slice(0,20).map(t=>`<span class="chip"><b>${stEsc(t.t)}</b> · ${t.clk} кл${t.cost?` · $${Math.round(t.cost)}`:""} · ${catLabel(t.c)}</span>`).join("");
   const top=terms.slice().sort((a,b)=>b.clk-a.clk).slice(0,40);
+  // компактний знімок для сховища (спільний перегляд)
+  window._pmaxSnapshot={ total_clicks:Math.round(total), terms_total:terms.length,
+    cats: sq.cats,
+    top: terms.slice().sort((a,b)=>b.clk-a.clk).slice(0,80).map(t=>({t:t.t,c:t.c,clk:Math.round(t.clk),imp:Math.round(t.imp),cost:Math.round(t.cost*100)/100,cv:t.cv,val:t.val})),
+    neg: neg.slice(0,40).map(t=>({t:t.t,c:t.c,clk:Math.round(t.clk),cost:Math.round(t.cost)})) };
   const topRows=top.map(t=>{const cc=SQ.find(x=>x[0]===t.c),col=cc?cc[2]:"#6e7681";
     return `<tr><td class="cn" style="max-width:280px">${stEsc(t.t)}</td><td style="color:${col}">${catLabel(t.c)}</td><td>${Math.round(t.clk)}</td><td>${Math.round(t.imp)}</td><td>$${Math.round(t.cost)}</td><td>${t.cv.toFixed(1)}</td><td>${t.cost?(t.val/t.cost).toFixed(2):"—"}</td></tr>`;}).join("");
   const wasteChips=waste.map(t=>`<span class="chip"><b>${stEsc(t.t)}</b> · ${Math.round(t.clk)} кл · $${Math.round(t.cost)}</span>`).join("");
@@ -825,6 +830,17 @@ function pmaxRender(rows, fname){
     <div class="sub" style="margin-top:16px">Топ PMax-запитів за кліками:</div>
     <table class="roastbl" style="margin-top:6px"><thead><tr><th>Запит</th><th>Категорія</th><th>Кліки</th><th>Покази</th><th>Витрати</th><th>Конв</th><th>ROAS</th></tr></thead><tbody>${topRows}</tbody></table>
     <div class="sub" style="margin-top:6px">Категоризація — евристична (гео через довідник міст дашборда). Для точної — можна прогнати через повний класифікатор.</div>`;
+}
+
+// ── PMax сховище (Google Apps Script Web App) — спільне для всіх ──
+const PMAX_STORE_URL="https://script.google.com/macros/s/AKfycbwFWHJIzymg96t2kpFEx1DgaT-ulPLkoF1xnXe552ijRSQJGwYW7GQYUO1xWuuDBNI/exec";
+const PMAX_STORE_SECRET="blossom-pmax-9f3k2xQ";
+async function pmaxStoreLoad(){
+  if(!PMAX_STORE_URL) return;
+  try{ const r=await fetch(PMAX_STORE_URL+"?t="+Date.now()); const j=await r.json();
+    if(j&&typeof j==="object"&&!j.err){ DATA.pmax_snapshots=DATA.pmax_snapshots||{};
+      for(const cid in j) DATA.pmax_snapshots[cid]=j[cid]; } // сховище = джерело правди
+  }catch(e){}
 }
 
 // ── метадані уплоаду: проєкт, платформа, період з файлу, збереження ──
@@ -853,23 +869,28 @@ function pmaxDetectPeriod(rows, hi){
   }
   return null;
 }
-function pmaxSaveSnapshot(){
+async function pmaxSaveSnapshot(){
   const proj=document.getElementById("pmaxUpProj").value;
-  const slug={"2650994843":"blossom","1451880631":"sunny","7190249166":"f4h"}[proj]||"proj";
-  const plat=document.getElementById("pmaxUpPlat").value.toLowerCase();
+  const plat=document.getElementById("pmaxUpPlat").value;
   const s=document.getElementById("pmaxUpStart").value, e=document.getElementById("pmaxUpEnd").value;
+  const note=document.getElementById("pmaxUpNote");
   if(!s||!e){ alert("Впиши період (Початок і Кінець) — без нього знімок не зберегти."); return; }
-  const terms=window._pmaxTerms||[];
-  if(!terms.length){ alert("Спершу завантаж CSV."); return; }
-  const rows=[["Search term","Campaign type","Clicks","Impr.","Cost","Conversions","Conv. value"]];
-  terms.forEach(t=>rows.push([t.t,"Performance Max",t.clk,t.imp,t.cost,t.cv,t.val]));
-  const csv=rows.map(r=>r.map(v=>`"${String(v==null?"":v).replace(/"/g,'""')}"`).join(",")).join("\n");
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
-  a.download=`${slug}_${plat}_${s}_${e}.csv`;
-  a.click(); URL.revokeObjectURL(a.href);
-  document.getElementById("pmaxUpNote").innerHTML=`💾 Файл <b>${a.download}</b> завантажено. Поклади його в папку <b>pmax_uploads/</b> (або надішли мені) — і знімок збережеться в дашборді назавжди для всіх.`;
+  const snap=window._pmaxSnapshot;
+  if(!snap||!(window._pmaxTerms||[]).length){ alert("Спершу завантаж CSV."); return; }
+  if(!PMAX_STORE_URL){ note.textContent="Сховище не налаштоване (нема URL)."; return; }
+  const btn=document.getElementById("pmaxSaveBtn"); btn.disabled=true; note.textContent="зберігаю у сховище…";
+  try{
+    // simple-request POST (text/plain) — без CORS-preflight; Apps Script читає postData
+    await fetch(PMAX_STORE_URL,{method:"POST",body:JSON.stringify({secret:PMAX_STORE_SECRET,project:proj,platform:plat,start:s,end:e,snapshot:snap})});
+    await pmaxStoreLoad();                 // перечитати сховище
+    ACC=proj; buildAccSegActive(proj); render();  // перемкнутись на цей проєкт і показати
+    const pn=(DATA.accounts[proj]||{}).name||proj;
+    note.innerHTML=`✓ Збережено у сховище: <b>${pn} · ${plat==="BING"?"Bing":"Google"} · ${s}…${e}</b>. Тепер його бачать усі — див. «💾 Збережені знімки PMax» нижче.`;
+  }catch(err){ note.textContent="✗ не вдалось зберегти: "+(err.message||err); }
+  finally{ btn.disabled=false; }
 }
+// підсвітити активний акаунт у селекторі (без перебудови)
+function buildAccSegActive(cid){ document.querySelectorAll("#accSeg button").forEach(b=>b.classList.toggle("active", b.dataset.acc===cid)); }
 
 // ── збережені знімки PMax (з data.json.pmax_snapshots, спільні для всіх) ──
 function pmaxSnapList(){ const s=(DATA.pmax_snapshots||{})[ACC]||[];
@@ -886,7 +907,15 @@ function pmaxSnapRender(){
   if(prev!==""&&+prev<list.length) sel.value=prev;
   const s=list[+sel.value||0]||list[0];
   scope.textContent=`· ${(DATA.accounts[ACC]||{}).name||ACC} · ${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} · залито ${s.uploaded} · ${s.total_clicks.toLocaleString("en-US")} кліків · ${s.terms_total.toLocaleString("en-US")} запитів`;
-  wrap.innerHTML=pmaxSnapHTML(s);
+  const del=PMAX_STORE_URL?`<button class="apply" style="margin:0 0 10px" onclick="pmaxDeleteSnapshot('${ACC}','${s.platform}','${s.start}','${s.end}')">🗑 Видалити цей знімок</button>`:"";
+  wrap.innerHTML=del+pmaxSnapHTML(s);
+}
+async function pmaxDeleteSnapshot(cid,platform,start,end){
+  if(!confirm(`Видалити знімок ${start}…${end} для всіх?`)) return;
+  try{
+    await fetch(PMAX_STORE_URL,{method:"POST",body:JSON.stringify({secret:PMAX_STORE_SECRET,action:"delete",project:cid,platform,start,end})});
+    await pmaxStoreLoad(); pmaxSnapRender();
+  }catch(e){ alert("Не вдалось видалити: "+e.message); }
 }
 function pmaxSnapHTML(s){
   const sq={cats:{}}; SQ.forEach(([k])=>{ sq.cats[k]=s.cats[k]||{share_clicks:0,terms:0,clicks:0,cost:0,roas:0}; });
@@ -1475,6 +1504,7 @@ function showApp(){
   buildAccSeg();
   pmaxUpInit();
   render();
+  pmaxStoreLoad().then(()=>{ if(VIEW==="dash") pmaxSnapRender(); });  // спільні знімки зі сховища
 }
 
 // ── розшифрування payload (WebCrypto: PBKDF2-SHA256 + AES-GCM) ───────
