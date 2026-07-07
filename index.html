@@ -1277,7 +1277,12 @@ document.getElementById("pw").addEventListener("keydown",e=>{if(e.key==="Enter")
 // без збереженого пароля (старий кеш) — НЕ показувати кеш, вимагати ввід (щоб не висіли застарілі дані).
 const cached=sessionStorage.getItem("data"), cpw=sessionStorage.getItem("pw");
 if(cached && cpw){ try{ DATA=JSON.parse(cached); showApp(); }catch(e){} }
-if(cpw){ loadData(cpw).then(()=>{ if(DATA && typeof refresh==="function") refresh(); }).catch(()=>{}); }
+if(cpw){ loadData(cpw).then(()=>{ if(DATA){
+  document.getElementById("refDate").textContent=DATA.reference_date;
+  document.getElementById("genAt").textContent=(DATA.generated_at||"").replace("T"," ").slice(0,16);
+  const sn=document.getElementById("staleNote"); if(sn) sn.innerHTML = (DATA.stale&&DATA.stale.length)?` <span class="stale">⚠ ${DATA.stale.length} днів з кешу (ліміт API)</span>`:"";
+  if(typeof refresh==="function") refresh();
+} }).catch(()=>{}); }
 </script>
 </body>
 </html>
