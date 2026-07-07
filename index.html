@@ -199,6 +199,13 @@
   </div>
   <div id="pmaxHelpBox" class="sub hidden" style="margin:0 0 12px;line-height:1.6"></div>
   <div id="pmaxUpWrap"></div>
+
+  <div class="section-title">💾 Збережені знімки PMax <span class="sub" id="pmaxSnapScope"></span></div>
+  <div class="metctl" style="margin:2px 0 10px">
+    <span class="label">Період</span>
+    <select id="pmaxSnapSel" onchange="pmaxSnapRender()"></select>
+  </div>
+  <div id="pmaxSnapWrap"></div>
   </div><!-- /dashView -->
 
   <div id="mapView" class="hidden">
@@ -567,6 +574,7 @@ function render(){
   document.getElementById("acctBreak").innerHTML="";
   sqInit();
   renderSQ();
+  pmaxSnapRender();
 }
 
 // ── якість пошукових запитів (Search=денні кошики за період / PMax=снапшот 30д) ──
@@ -801,6 +809,38 @@ function pmaxRender(rows, fname){
     <div class="sub" style="margin-top:16px">Топ PMax-запитів за кліками:</div>
     <table class="roastbl" style="margin-top:6px"><thead><tr><th>Запит</th><th>Категорія</th><th>Кліки</th><th>Покази</th><th>Витрати</th><th>Конв</th><th>ROAS</th></tr></thead><tbody>${topRows}</tbody></table>
     <div class="sub" style="margin-top:6px">Категоризація — евристична (гео через довідник міст дашборда). Для точної — можна прогнати через повний класифікатор.</div>`;
+}
+
+// ── збережені знімки PMax (з data.json.pmax_snapshots, спільні для всіх) ──
+function pmaxSnapList(){ const s=(DATA.pmax_snapshots||{})[ACC]||[];
+  return s.slice().sort((a,b)=> a.start<b.start?1 : a.start>b.start?-1 : (a.platform<b.platform?-1:1)); }
+function pmaxSnapRender(){
+  const scope=document.getElementById("pmaxSnapScope"), wrap=document.getElementById("pmaxSnapWrap"), sel=document.getElementById("pmaxSnapSel");
+  if(!wrap||!sel) return;
+  if(ACC==="ALL"){ scope.textContent=""; sel.innerHTML=""; wrap.innerHTML='<div class="sub">Вибери конкретний проєкт (Blossom / Sunny / F4H), щоб побачити збережені знімки PMax.</div>'; return; }
+  const list=pmaxSnapList();
+  if(!list.length){ scope.textContent=""; sel.innerHTML="";
+    wrap.innerHTML='<div class="sub">Для цього проєкту ще нема збережених знімків. Завантаж PMax-звіт у папку <b>pmax_uploads/</b> (назва <code>проєкт_платформа_старт_кінець.csv</code>) або надішли файл — і він збережеться тут назавжди.</div>'; return; }
+  const prev=sel.value;
+  sel.innerHTML=list.map((s,i)=>`<option value="${i}">${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} (залито ${s.uploaded})</option>`).join("");
+  if(prev!==""&&+prev<list.length) sel.value=prev;
+  const s=list[+sel.value||0]||list[0];
+  scope.textContent=`· ${(DATA.accounts[ACC]||{}).name||ACC} · ${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} · залито ${s.uploaded} · ${s.total_clicks.toLocaleString("en-US")} кліків · ${s.terms_total.toLocaleString("en-US")} запитів`;
+  wrap.innerHTML=pmaxSnapHTML(s);
+}
+function pmaxSnapHTML(s){
+  const sq={cats:{}}; SQ.forEach(([k])=>{ sq.cats[k]=s.cats[k]||{share_clicks:0,terms:0,clicks:0,cost:0,roas:0}; });
+  const vis=SQ.filter(([k])=>s.cats[k]&&(s.cats[k].clicks>0||s.cats[k].terms>0));
+  const leg=vis.filter(([k])=>sq.cats[k].share_clicks>0).map(([k,n,c])=>`<div class="it"><span class="dot" style="background:${c}"></span>${n} <b>${sq.cats[k].share_clicks}%</b></div>`).join("");
+  const crow=vis.map(([k,n,c])=>{const d=sq.cats[k];return `<tr><td class="metric"><span class="dot" style="background:${c}"></span> ${n}</td><td>${d.share_clicks}%</td><td>${(d.terms||0).toLocaleString("en-US")}</td><td>${(d.clicks||0).toLocaleString("en-US")}</td><td>$${(d.cost||0).toLocaleString("en-US")}</td><td>${d.roas||0}</td></tr>`;}).join("");
+  const negChips=(s.neg||[]).slice(0,20).map(t=>`<span class="chip"><b>${stEsc(t.t)}</b> · ${t.clk} кл${t.cost?` · $${Math.round(t.cost)}`:""} · ${catLabel(t.c)}</span>`).join("");
+  const topRows=(s.top||[]).slice(0,40).map(t=>{const cc=SQ.find(x=>x[0]===t.c),col=cc?cc[2]:"#6e7681";
+    return `<tr><td class="cn" style="max-width:280px">${stEsc(t.t)}</td><td style="color:${col}">${catLabel(t.c)}</td><td>${t.clk}</td><td>${t.imp}</td><td>$${Math.round(t.cost)}</td><td>${t.cv}</td><td>${t.cost?(t.val/t.cost).toFixed(2):"—"}</td></tr>`;}).join("");
+  return `<div class="sqtop"><div class="donut">${donut(sq)}</div><div class="sqleg">${leg}</div></div>
+    <table><thead><tr><th>Категорія</th><th>% кліків</th><th>Запитів</th><th>Кліки</th><th>Витрати</th><th>ROAS</th></tr></thead><tbody>${crow}</tbody></table>
+    ${negChips?`<div class="sub" style="margin-top:14px">Нецільові / конкуренти (кандидати в мінус):</div><div class="chips">${negChips}</div>`:""}
+    <div class="sub" style="margin-top:16px">Топ PMax-запитів за кліками:</div>
+    <table class="roastbl" style="margin-top:6px"><thead><tr><th>Запит</th><th>Категорія</th><th>Кліки</th><th>Покази</th><th>Витрати</th><th>Конв</th><th>ROAS</th></tr></thead><tbody>${topRows}</tbody></table>`;
 }
 
 // ── контролери ──────────────────────────────────────────────────────
