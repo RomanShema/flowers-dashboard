@@ -147,6 +147,7 @@
     <button data-view="budget">💰 Бюджет</button>
     <button data-view="coverage">🏙 Покриття</button>
     <button data-view="merchant">🛒 Товари</button>
+    <button data-view="stlog">🔎 Запити (лог)</button>
   </div>
   <div class="controls">
     <span class="label">Акаунт</span>
@@ -310,6 +311,26 @@
       <span class="sub" id="mktScope"></span>
     </div>
     <div id="merchantWrap"></div>
+  </div>
+
+  <div id="stlogView" class="hidden">
+    <div class="metctl" style="margin:2px 0 10px">
+      <span class="label">Search-запити (журнал по днях) <span class="sub" id="stScope"></span></span>
+    </div>
+    <div class="metctl" style="margin:0 0 10px;flex-wrap:wrap;gap:8px">
+      <input id="stSearch" type="text" placeholder="пошук запиту…" oninput="stChg()" style="min-width:200px">
+      <span class="label" style="margin-left:6px">Категорія</span>
+      <select id="stCat" onchange="stChg()"></select>
+      <span class="label" style="margin-left:6px">Мін. кліків</span>
+      <input id="stMinClk" type="number" min="0" value="0" oninput="stChg()" style="width:70px">
+      <label class="wk" style="margin-left:6px"><input type="checkbox" id="stWaste" onchange="stChg()"> лише 0 конверсій</label>
+      <label class="wk"><input type="checkbox" id="stNokw" onchange="stChg()"> не покриті keyword</label>
+      <button class="apply" id="stCopy" onclick="copyText((window._stNames||[]).join('\n'),this)" style="margin-left:6px">📋 Копіювати запити</button>
+      <a class="apply" id="stOpen" href="#" target="_blank" style="margin-left:6px;text-decoration:none">↗ Повний лог</a>
+    </div>
+    <div id="stStats" class="sub" style="margin:0 0 8px"></div>
+    <div id="stTrend" style="margin:0 0 12px"></div>
+    <div id="stWrap"></div>
   </div>
 </div>
 </div>
@@ -660,7 +681,7 @@ function buildAccSeg(){
     b.classList.add("active"); ACC=b.dataset.acc; refresh();
   });
 }
-function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else render(); }
+function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else render(); }
 let FUN_FILTER="all", FUN_START=null, FUN_END=null, FUN_CMP="prev";
 const FUN_LBL={all:"увесь трафік",google:"тільки Google Ads",bing:"тільки Bing"};
 const FUN_CMP_LBL={prev:"попередній період",yoy:"рік тому",none:"без порівняння"};
@@ -1018,6 +1039,7 @@ function setView(v){
   document.getElementById("budgetView").classList.toggle("hidden", v!=="budget");
   document.getElementById("coverageView").classList.toggle("hidden", v!=="coverage");
   document.getElementById("merchantView").classList.toggle("hidden", v!=="merchant");
+  document.getElementById("stlogView").classList.toggle("hidden", v!=="stlog");
   const dash = v==="dash";
   document.getElementById("typeLabel").style.display = dash?"":"none";
   document.getElementById("chSeg").style.display = dash?"":"none";
@@ -1028,6 +1050,79 @@ function setView(v){
   refresh();
 }
 document.querySelectorAll("#viewSeg button").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+
+// ── вкладка ЗАПИТИ (лог із Google-таблиць, поле stlog) ──────────────
+let ST_SORT="clk", ST_DIR=-1, ST_INIT=false;
+function stEsc(s){ return String(s||"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function stMerge(){
+  const ids = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  const list = ids.map(id=>DATA.accounts[id]&&DATA.accounts[id].stlog).filter(Boolean);
+  if(!list.length) return null;
+  if(list.length===1) return Object.assign({single:true}, list[0]);
+  const m={}, daily={}; let tot=0, shown=0, updated="";
+  list.forEach(s=>{ tot+=s.terms_total||0; shown+=s.shown||0; if(s.updated>updated)updated=s.updated;
+    s.terms.forEach(t=>{ const e=m[t.t]||(m[t.t]={t:t.t,c:t.c,clk:0,imp:0,cost:0,cv:0,val:0,d:0,last:"",kw:"No",camp:t.camp});
+      e.clk+=t.clk;e.imp+=t.imp;e.cost+=t.cost;e.cv+=t.cv;e.val+=t.val;e.d=Math.max(e.d,t.d);
+      if(t.last>e.last)e.last=t.last; if(t.kw==="Yes")e.kw="Yes"; });
+    (s.daily||[]).forEach(x=>{ const e=daily[x.d]||(daily[x.d]={d:x.d,clk:0,cv:0,cost:0}); e.clk+=x.clk;e.cv+=x.cv;e.cost+=x.cost; }); });
+  return {terms:Object.values(m), daily:Object.values(daily).sort((a,b)=>a.d<b.d?-1:1),
+    updated, terms_total:tot, shown, single:false};
+}
+function stChg(){ renderStlog(); }
+function stSort(k){ if(ST_SORT===k) ST_DIR=-ST_DIR; else { ST_SORT=k; ST_DIR=-1; } renderStlog(); }
+function renderStlog(){
+  const data=stMerge();
+  const scope=ACC==="ALL"?"усі 3 акаунти":((DATA.accounts[ACC]||{}).name||ACC);
+  if(!ST_INIT){ const sel=document.getElementById("stCat");
+    sel.innerHTML='<option value="">усі</option>'+SQ.map(x=>`<option value="${x[0]}">${x[1]}</option>`).join(""); ST_INIT=true; }
+  const openA=document.getElementById("stOpen");
+  document.getElementById("stScope").textContent = data? `· ${scope} · ${data.daily.length} днів · оновлено ${data.updated}` : "";
+  if(data&&data.single&&data.url){ openA.href=data.url; openA.style.display=""; } else { openA.style.display="none"; }
+  const wrap=document.getElementById("stWrap"), stats=document.getElementById("stStats"), trend=document.getElementById("stTrend");
+  if(!data){ wrap.innerHTML='<div class="sub">Немає даних stlog. Скрипти ще не залили лог у таблиці, або колектор searchterms_sheets.py не запускався.</div>'; stats.textContent=""; trend.innerHTML=""; return; }
+
+  const q=(document.getElementById("stSearch").value||"").toLowerCase().trim();
+  const cat=document.getElementById("stCat").value;
+  const minclk=+document.getElementById("stMinClk").value||0;
+  const waste=document.getElementById("stWaste").checked;
+  const nokw=document.getElementById("stNokw").checked;
+  let rows=data.terms.filter(t=> t.clk>=minclk
+    && (!q || t.t.toLowerCase().includes(q))
+    && (!cat || t.c===cat)
+    && (!waste || t.cv===0)
+    && (!nokw || t.kw!=="Yes"));
+  const S=ST_SORT, D=ST_DIR;
+  rows.sort((a,b)=>{ let x=a[S],y=b[S];
+    if(S==="t"||S==="last"||S==="camp"){ x=String(x);y=String(y); return D*(x<y?-1:x>y?1:0); }
+    return D*((x||0)-(y||0)); });
+  window._stNames=rows.map(t=>t.t);
+
+  const sumClk=rows.reduce((s,t)=>s+t.clk,0), sumCv=rows.reduce((s,t)=>s+t.cv,0), sumCost=rows.reduce((s,t)=>s+t.cost,0);
+  stats.innerHTML=`Показано <b>${rows.length}</b> запитів (у дашборді топ ${data.shown} з ${data.terms_total}; повний хвіст — у таблиці) · кліків ${sumClk} · конв ${sumCv.toFixed(1)} · витрати $${sumCost.toFixed(0)}`;
+
+  const dd=data.daily, mx=Math.max(1,...dd.map(x=>x.clk));
+  trend.innerHTML='<div style="display:flex;align-items:flex-end;gap:2px;height:44px">'+
+    dd.map(x=>`<div title="${x.d}: ${x.clk} кліків, ${x.cv} конв" style="flex:1;background:#58a6ff;border-radius:2px 2px 0 0;height:${Math.round(x.clk/mx*100)}%;min-height:2px"></div>`).join("")+'</div>'+
+    '<div class="sub" style="margin-top:2px">Кліки по днях (усі Search-запити акаунта)</div>';
+
+  const cap=1500, showR=rows.slice(0,cap);
+  const arrow=k=>ST_SORT===k?(ST_DIR<0?" ▾":" ▴"):"";
+  const th=(k,l)=>`<th onclick="stSort('${k}')" style="cursor:pointer;user-select:none">${l}${arrow(k)}</th>`;
+  let h='<table class="roastbl"><thead><tr>'
+    +th("t","Запит")+th("c","Категорія")+th("clk","Кліки")+th("imp","Покази")
+    +th("cost","Витрати")+th("cv","Конв")+th("val","Цінність")+th("d","Днів")
+    +th("last","Остання")+th("kw","KW")+th("camp","Кампанія")+'</tr></thead><tbody>';
+  showR.forEach(t=>{ const c=SQ.find(x=>x[0]===t.c), col=c?c[2]:"#6e7681";
+    h+=`<tr><td class="cn" style="max-width:280px">${stEsc(t.t)}</td>`
+      +`<td style="color:${col}">${catLabel(t.c)}</td>`
+      +`<td>${t.clk}</td><td>${t.imp}</td><td>$${t.cost.toFixed(0)}</td>`
+      +`<td>${t.cv.toFixed(1)}</td><td>$${t.val.toFixed(0)}</td><td>${t.d}</td>`
+      +`<td>${t.last?fdate(t.last):""}</td><td>${t.kw==="Yes"?"✓":"—"}</td>`
+      +`<td class="cn" style="max-width:200px">${stEsc(t.camp||"")}</td></tr>`; });
+  h+='</tbody></table>';
+  if(rows.length>cap) h+=`<div class="sub" style="margin-top:8px">Показано перші ${cap} з ${rows.length}. Звузь фільтром або відкрий повний лог.</div>`;
+  wrap.innerHTML=h;
+}
 function mapCities(){
   const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
   const key = PLATFORM==="BING" ? "geo_cities_bing" : "geo_cities";
