@@ -893,21 +893,26 @@ async function pmaxSaveSnapshot(){
 function buildAccSegActive(cid){ document.querySelectorAll("#accSeg button").forEach(b=>b.classList.toggle("active", b.dataset.acc===cid)); }
 
 // ── збережені знімки PMax (з data.json.pmax_snapshots, спільні для всіх) ──
-function pmaxSnapList(){ const s=(DATA.pmax_snapshots||{})[ACC]||[];
-  return s.slice().sort((a,b)=> a.start<b.start?1 : a.start>b.start?-1 : (a.platform<b.platform?-1:1)); }
+// кожен запис несе _cid (сайт), щоб «Усі 3» показувало всі проєкти разом із підписом сайту
+function pmaxSnapList(){
+  const all=DATA.pmax_snapshots||{}; let out=[];
+  const ids = ACC==="ALL" ? Object.keys(all) : [ACC];
+  ids.forEach(cid=> (all[cid]||[]).forEach(s=> out.push(Object.assign({_cid:cid}, s))) );
+  return out.sort((a,b)=> a.start<b.start?1 : a.start>b.start?-1 : (a._cid<b._cid?-1:1));
+}
+function pmaxSnapName(cid){ return ((DATA.accounts[cid]||{}).name||cid).replace(/ .*/,""); }
 function pmaxSnapRender(){
   const scope=document.getElementById("pmaxSnapScope"), wrap=document.getElementById("pmaxSnapWrap"), sel=document.getElementById("pmaxSnapSel");
   if(!wrap||!sel) return;
-  if(ACC==="ALL"){ scope.textContent=""; sel.innerHTML=""; wrap.innerHTML='<div class="sub">Вибери конкретний проєкт (Blossom / Sunny / F4H), щоб побачити збережені знімки PMax.</div>'; return; }
   const list=pmaxSnapList();
   if(!list.length){ scope.textContent=""; sel.innerHTML="";
-    wrap.innerHTML='<div class="sub">Для цього проєкту ще нема збережених знімків. Завантаж PMax-звіт у папку <b>pmax_uploads/</b> (назва <code>проєкт_платформа_старт_кінець.csv</code>) або надішли файл — і він збережеться тут назавжди.</div>'; return; }
+    wrap.innerHTML='<div class="sub">Ще нема збережених знімків'+(ACC==="ALL"?"":" для цього проєкту")+'. Завантаж PMax-звіт вище (Проєкт → Платформа → CSV → 💾 Зберегти знімок) — і він збережеться тут для всіх.</div>'; return; }
   const prev=sel.value;
-  sel.innerHTML=list.map((s,i)=>`<option value="${i}">${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} (залито ${s.uploaded})</option>`).join("");
+  sel.innerHTML=list.map((s,i)=>`<option value="${i}">${pmaxSnapName(s._cid)} · ${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} · ${(s.total_clicks||0).toLocaleString("en-US")} кл (залито ${s.uploaded})</option>`).join("");
   if(prev!==""&&+prev<list.length) sel.value=prev;
-  const s=list[+sel.value||0]||list[0];
-  scope.textContent=`· ${(DATA.accounts[ACC]||{}).name||ACC} · ${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} · залито ${s.uploaded} · ${s.total_clicks.toLocaleString("en-US")} кліків · ${s.terms_total.toLocaleString("en-US")} запитів`;
-  const del=PMAX_STORE_URL?`<button class="apply" style="margin:0 0 10px" onclick="pmaxDeleteSnapshot('${ACC}','${s.platform}','${s.start}','${s.end}')">🗑 Видалити цей знімок</button>`:"";
+  const s=list[+sel.value||0]||list[0], cid=s._cid;
+  scope.textContent=`· ${pmaxSnapName(cid)} · ${s.platform==="BING"?"Bing":"Google"} · ${s.start}…${s.end} · залито ${s.uploaded} · ${s.total_clicks.toLocaleString("en-US")} кліків · ${s.terms_total.toLocaleString("en-US")} запитів`;
+  const del=PMAX_STORE_URL?`<button class="apply" style="margin:0 0 10px" onclick="pmaxDeleteSnapshot('${cid}','${s.platform}','${s.start}','${s.end}')">🗑 Видалити цей знімок (${pmaxSnapName(cid)})</button>`:"";
   wrap.innerHTML=del+pmaxSnapHTML(s);
 }
 async function pmaxDeleteSnapshot(cid,platform,start,end){
