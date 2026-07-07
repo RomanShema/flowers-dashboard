@@ -189,6 +189,16 @@
 
   <div class="section-title">Якість пошукових запитів <span class="sub" id="sqScope"></span></div>
   <div id="sqWrap"></div>
+
+  <div class="section-title">PMax-запити із завантаженого звіту <span class="sub" id="pmaxUpScope"></span></div>
+  <div class="metctl" style="margin:2px 0 10px;flex-wrap:wrap;gap:8px">
+    <button class="apply" onclick="pmaxHelp()">❓ Як зробити звіт</button>
+    <label class="apply" style="cursor:pointer">⬆ Завантажити PMax CSV<input type="file" accept=".csv,text/csv" onchange="pmaxUpload(this)" style="display:none"></label>
+    <button class="apply" id="pmaxNegCopy" onclick="copyText((window._pmaxNeg||[]).join('\n'),this)" style="display:none">📋 Копіювати нецільові</button>
+    <span class="sub" id="pmaxUpNote">Завантаж CSV із PMax-запитами — покажу розподіл по категоріях окремо (donut + таблиця + кандидати в мінус). Дані нікуди не зберігаються.</span>
+  </div>
+  <div id="pmaxHelpBox" class="sub hidden" style="margin:0 0 12px;line-height:1.6"></div>
+  <div id="pmaxUpWrap"></div>
   </div><!-- /dashView -->
 
   <div id="mapView" class="hidden">
@@ -668,6 +678,129 @@ function downloadSQ(){
   a.href=URL.createObjectURL(new Blob(["﻿"+csv],{type:"text/csv;charset=utf-8"}));
   a.download=("запити_категорії_"+accName+"_"+scope+"_30д.csv").replace(/\s+/g,"_");
   a.click(); URL.revokeObjectURL(a.href);
+}
+
+// ── PMax-запити із завантаженого CSV (клієнтський аналіз, нічого не зберігається) ──
+function pmaxHelp(){
+  const b=document.getElementById("pmaxHelpBox"); b.classList.toggle("hidden");
+  if(!b.innerHTML) b.innerHTML=`<b>Як отримати CSV із PMax-запитами:</b><br>
+    1. Google Ads → <b>Insights & reports → Report editor</b> (Звіти) → новий звіт «Table».<br>
+    2. Виміри: <b>Search term</b> + <b>Campaign type</b> (можна ще Campaign). Метрики: <b>Clicks, Impr., Cost, Conversions, Conv. value</b>.<br>
+    3. У фільтрі постав <b>Campaign type = Performance Max</b> (або лиши всі — я сам відберу PMax-рядки).<br>
+    4. Період — який треба. <b>Download → .csv</b>.<br>
+    5. Повернись сюди → <b>⬆ Завантажити PMax CSV</b>. Скрипт відбере рядки Performance Max, згрупує по запиту й розкладе по категоріях.<br>
+    <span class="mut">Примітка: Google не віддає весь «long-tail» PMax — частина запитів схована в його бакеті «(без категорії)».</span>`;
+}
+function csvParse(text){
+  text=text.replace(/^﻿/,""); const rows=[]; let f="",row=[],q=false;
+  for(let i=0;i<text.length;i++){ const c=text[i];
+    if(q){ if(c==='"'){ if(text[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else { if(c==='"')q=true; else if(c===','){row.push(f);f="";}
+      else if(c==='\n'||c==='\r'){ if(c==='\r'&&text[i+1]==='\n')i++; row.push(f);f=""; if(row.some(x=>x!==""))rows.push(row); row=[]; }
+      else f+=c; } }
+  if(f!==""||row.length){ row.push(f); if(row.some(x=>x!==""))rows.push(row); }
+  return rows;
+}
+function pmaxNum(v){ const n=parseFloat(String(v==null?"":v).replace(/[$,%\s]/g,"").replace(/,/g,"")); return isNaN(n)?0:n; }
+let _PMAX_CITYSET=null;
+function pmaxCitySet(){ if(_PMAX_CITYSET) return _PMAX_CITYSET;
+  _PMAX_CITYSET=new Set(); (DATA.all_cities||[]).forEach(c=>{ if(c&&c.c) _PMAX_CITYSET.add(nrm(c.c)); }); return _PMAX_CITYSET; }
+function pmaxHasCity(low){
+  const set=pmaxCitySet(); const toks=nrm(low).split(/\s+/).filter(Boolean);
+  for(let i=0;i<toks.length;i++){
+    for(let L=Math.min(3,toks.length-i);L>=1;L--){
+      const gram=toks.slice(i,i+L).join(" ");
+      if(L>=2 && set.has(gram)) return true;
+      if(L===1 && gram.length>=6 && set.has(gram)) return true;
+    }
+  }
+  return false;
+}
+function pmaxClassify(term){
+  const t=term.toLowerCase();
+  const comp=["teleflora","1800flowers","1-800","800flowers","from you flowers","avas flowers","ftd","proflowers","bloomnation","urban stems","the bouqs","ode a la rose","1stinflowers","florists com"];
+  for(const w of comp) if(t.includes(w)) return "competitor";
+  if(/(blossom flower|sunnyflower|sunny flower delivery|flowers in 4 hours|flowersin4hours|flowers in four hours)/.test(t)) return "brand";
+  if(/(funeral|sympathy|condolence|casket|grave|memorial|peace lily|difunto|coronas para)/.test(t)) return "funeral";
+  if(/(birthday|anniversary|valentine|mother.?s day|get well|congrat|wedding|graduation|cumplea|aniversario)/.test(t)) return "occasion";
+  if(pmaxHasCity(t) || /(near me|delivery|florist|flower shop|zip code|\b[a-z]{2}\b \d{5})/.test(t)) return "geo";
+  if(/(rose|lily|lilies|tulip|orchid|daisy|sunflower|carnation|peon|hydrangea|kalanchoe|gerbera|scheffler|lirio|rosa)/.test(t)) return "product";
+  if(/(flower|bouquet|floral|arrangement|flores|fleur|ramo|basket|centerpiece)/.test(t)) return "generic";
+  return "nontarget";
+}
+function pmaxUpload(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const note=document.getElementById("pmaxUpNote"); note.textContent="читаю "+f.name+"…";
+  const r=new FileReader();
+  r.onload=()=>{ try{ pmaxRender(csvParse(r.result), f.name); }catch(e){ note.textContent="Помилка розбору: "+e.message; document.getElementById("pmaxUpWrap").innerHTML=""; } };
+  r.readAsText(f); input.value="";
+}
+function pmaxColIdx(hdr){
+  const H=hdr.map(h=>h.toLowerCase().trim());
+  const find=(...alts)=>{ for(const a of alts){ const i=H.findIndex(h=>h.includes(a)); if(i>=0) return i; } return -1; };
+  return {
+    term: find("search term","search_term","запит","поисков"),
+    ctype: find("campaign type","тип кампан","тип кампании"),
+    clicks: find("clicks","клік","клик"),
+    impr: find("impr","покази","показ"),
+    cost: find("cost","вартіст","витрат","стоимость"),
+    conv: (()=>{ const i=H.findIndex(h=>/(^|[^.])convers/.test(h)&&!h.includes("value")&&!h.includes("цінн")&&!h.includes("значен")); return i>=0?i:find("conversions","конверс"); })(),
+    val: find("conv. value","conversion value","conv value","цінніст","ценность","value")
+  };
+}
+function pmaxRender(rows, fname){
+  const note=document.getElementById("pmaxUpNote"), wrap=document.getElementById("pmaxUpWrap"), scope=document.getElementById("pmaxUpScope");
+  // знайти рядок-хедер: комірка, що ПОЧИНАЄТЬСЯ зі "Search term", у рядку з кількома колонками
+  // (щоб не сплутати з рядком-назвою звіту "PMax search terms report")
+  let hi=rows.findIndex(r=>r.length>2 && r.some(c=>/^\s*(search term|поисковый запрос|пошуковий запит)/i.test((c||"").trim())));
+  if(hi<0) hi=rows.findIndex(r=>r.length>2 && r.some(c=>/search term|поисков|запит/i.test(c)));
+  if(hi<0){ note.textContent="Не знайшов колонку «Search term» у файлі."; wrap.innerHTML=""; return; }
+  const col=pmaxColIdx(rows[hi]);
+  if(col.term<0){ note.textContent="Не знайшов колонку запиту."; wrap.innerHTML=""; return; }
+  const agg={}; let pmaxRows=0, totalRows=0, hasType=col.ctype>=0;
+  for(let i=hi+1;i<rows.length;i++){ const r=rows[i]; if(!r||r.length<=col.term) continue;
+    const term=(r[col.term]||"").trim(); if(!term||/^total/i.test(term)) continue;
+    totalRows++;
+    if(hasType){ const ct=(r[col.ctype]||"").toLowerCase(); if(!ct.includes("performance max")&&!ct.includes("pmax")&&!ct.includes("perform")) continue; }
+    pmaxRows++;
+    const key=term.toLowerCase();
+    const a=agg[key]||(agg[key]={t:term,clk:0,imp:0,cost:0,cv:0,val:0});
+    a.clk+=pmaxNum(r[col.clicks]); a.imp+=pmaxNum(r[col.impr]); a.cost+=pmaxNum(r[col.cost]);
+    a.cv+=pmaxNum(r[col.conv]); a.val+=pmaxNum(r[col.val]);
+  }
+  const terms=Object.values(agg);
+  if(!terms.length){ note.textContent=hasType?`У файлі не знайдено рядків Performance Max (усього рядків: ${totalRows}).`:`Файл порожній або без запитів.`; wrap.innerHTML=""; return; }
+  // категоризація → sq-подібний обʼєкт
+  const cats={}; SQ.forEach(([k])=>cats[k]={terms:0,clicks:0,cost:0,conv:0,value:0});
+  let total=0;
+  terms.forEach(t=>{ t.c=pmaxClassify(t.t); const c=cats[t.c]||(cats[t.c]={terms:0,clicks:0,cost:0,conv:0,value:0});
+    c.terms++; c.clicks+=t.clk; c.cost+=t.cost; c.conv+=t.cv; c.value+=t.val; total+=t.clk; });
+  const sq={total_clicks:total,cats:{}};
+  SQ.forEach(([k])=>{ const c=cats[k]; sq.cats[k]={terms:c.terms,share_clicks: total?+(c.clicks/total*100).toFixed(1):0,
+    clicks:Math.round(c.clicks),cost:Math.round(c.cost),conv:+c.conv.toFixed(1),roas:c.cost?+(c.value/c.cost).toFixed(2):0}; });
+  scope.textContent=`· ${fname||"файл"} · ${pmaxRows.toLocaleString("en-US")} PMax-рядків · ${terms.length.toLocaleString("en-US")} унік. запитів · ${Math.round(total).toLocaleString("en-US")} кліків`;
+  note.textContent="✓ готово. Дані лише у цьому вікні, не зберігаються.";
+  // легенда + таблиця (як у Search)
+  const vis=SQ.filter(([k])=>sq.cats[k].clicks>0||sq.cats[k].terms>0);
+  const leg=vis.filter(([k])=>sq.cats[k].share_clicks>0).map(([k,n,c])=>`<div class="it"><span class="dot" style="background:${c}"></span>${n} <b>${sq.cats[k].share_clicks}%</b></div>`).join("");
+  const crow=vis.map(([k,n,c])=>{const d=sq.cats[k];return `<tr><td class="metric"><span class="dot" style="background:${c}"></span> ${n}</td><td>${d.share_clicks}%</td><td>${d.terms.toLocaleString("en-US")}</td><td>${d.clicks.toLocaleString("en-US")}</td><td>$${d.cost.toLocaleString("en-US")}</td><td>${d.roas}</td></tr>`;}).join("");
+  // топ нецільових/конкурентів (кандидати в мінус) + сміття без конверсій
+  const neg=terms.filter(t=>t.c==="nontarget"||t.c==="competitor").sort((a,b)=>b.clk-a.clk);
+  const waste=terms.filter(t=>t.cv===0&&t.clk>=5).sort((a,b)=>b.clk-a.clk).slice(0,20);
+  window._pmaxNeg=neg.map(t=>t.t);
+  document.getElementById("pmaxNegCopy").style.display = neg.length?"":"none";
+  const negChips=neg.slice(0,20).map(t=>`<span class="chip"><b>${stEsc(t.t)}</b> · ${t.clk} кл${t.cost?` · $${Math.round(t.cost)}`:""} · ${catLabel(t.c)}</span>`).join("");
+  const top=terms.slice().sort((a,b)=>b.clk-a.clk).slice(0,40);
+  const topRows=top.map(t=>{const cc=SQ.find(x=>x[0]===t.c),col=cc?cc[2]:"#6e7681";
+    return `<tr><td class="cn" style="max-width:280px">${stEsc(t.t)}</td><td style="color:${col}">${catLabel(t.c)}</td><td>${Math.round(t.clk)}</td><td>${Math.round(t.imp)}</td><td>$${Math.round(t.cost)}</td><td>${t.cv.toFixed(1)}</td><td>${t.cost?(t.val/t.cost).toFixed(2):"—"}</td></tr>`;}).join("");
+  const wasteChips=waste.map(t=>`<span class="chip"><b>${stEsc(t.t)}</b> · ${Math.round(t.clk)} кл · $${Math.round(t.cost)}</span>`).join("");
+  wrap.innerHTML=`<div class="sqtop"><div class="donut">${donut(sq)}</div><div class="sqleg">${leg}</div></div>
+    <table><thead><tr><th>Категорія</th><th>% кліків</th><th>Запитів</th><th>Кліки</th><th>Витрати</th><th>ROAS</th></tr></thead><tbody>${crow}</tbody></table>
+    ${negChips?`<div class="sub" style="margin-top:14px">Нецільові / конкуренти (кандидати в мінус):</div><div class="chips">${negChips}</div>`:""}
+    ${wasteChips?`<div class="sub" style="margin-top:14px">Злив — ≥5 кліків, 0 конверсій:</div><div class="chips">${wasteChips}</div>`:""}
+    <div class="sub" style="margin-top:16px">Топ PMax-запитів за кліками:</div>
+    <table class="roastbl" style="margin-top:6px"><thead><tr><th>Запит</th><th>Категорія</th><th>Кліки</th><th>Покази</th><th>Витрати</th><th>Конв</th><th>ROAS</th></tr></thead><tbody>${topRows}</tbody></table>
+    <div class="sub" style="margin-top:6px">Категоризація — евристична (гео через довідник міст дашборда). Для точної — можна прогнати через повний класифікатор.</div>`;
 }
 
 // ── контролери ──────────────────────────────────────────────────────
