@@ -149,6 +149,7 @@
     <button data-view="merchant">🛒 Товари</button>
     <button data-view="stlog">🔎 Запити (лог)</button>
     <button data-view="hourly">🕐 Години</button>
+    <button data-view="cvs">🔗 Кліки↔Сеанси</button>
   </div>
   <div class="controls">
     <span class="label">Акаунт</span>
@@ -388,6 +389,13 @@
     </div>
     <div id="hrChart" style="margin:0 0 14px"></div>
     <div id="hrWrap"></div>
+  </div>
+
+  <div id="cvsView" class="hidden">
+    <div class="metctl" id="cvsDateCtl" style="margin:2px 0 8px"></div>
+    <div class="sub" style="margin:0 0 12px">Порівняння <b>кліків Google Ads</b> (Search+Shopping+PMax) із <b>сеансами GA4</b> (google / cpc) по кожному сайту. Норма — сеансів ~85–100% від кліків; сильно менше = втрата трекінгу (редирект, cookie-згода, повільне завантаження).</div>
+    <div id="cvsSummary" style="margin:0 0 16px"></div>
+    <div id="cvsWrap"></div>
   </div>
 </div>
 </div>
@@ -999,7 +1007,7 @@ function buildAccSeg(){
     b.classList.add("active"); ACC=b.dataset.acc; refresh();
   });
 }
-function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else if(VIEW==="hourly") renderHourly(); else render(); }
+function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else if(VIEW==="hourly") renderHourly(); else if(VIEW==="cvs") renderCvs(); else render(); }
 let FUN_FILTER="all", FUN_START=null, FUN_END=null, FUN_CMP="prev";
 const FUN_LBL={all:"увесь трафік",google:"тільки Google Ads",bing:"тільки Bing"};
 const FUN_CMP_LBL={prev:"попередній період",yoy:"рік тому",none:"без порівняння"};
@@ -1359,11 +1367,12 @@ function setView(v){
   document.getElementById("merchantView").classList.toggle("hidden", v!=="merchant");
   document.getElementById("stlogView").classList.toggle("hidden", v!=="stlog");
   document.getElementById("hourlyView").classList.toggle("hidden", v!=="hourly");
+  document.getElementById("cvsView").classList.toggle("hidden", v!=="cvs");
   const dash = v==="dash";
   document.getElementById("typeLabel").style.display = dash?"":"none";
   document.getElementById("chSeg").style.display = dash?"":"none";
   // у воронці свій фільтр трафіку — глобальну платформу ховаємо
-  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant" && v!=="stlog" && v!=="hourly";
+  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant" && v!=="stlog" && v!=="hourly" && v!=="cvs";
   document.getElementById("platLabel").style.display = showPlat?"":"none";
   document.getElementById("pfSeg").style.display = showPlat?"":"none";
   refresh();
@@ -1427,6 +1436,60 @@ function renderHourly(){
   wrap.innerHTML=html;
 }
 document.querySelectorAll("#hrPlatSeg button").forEach(b=>b.onclick=()=>{ HR_PLAT=b.dataset.hp; renderHourly(); });
+
+// ── вкладка КЛІКИ ↔ СЕАНСИ (Ads clicks vs GA4 sessions) ───────────────
+let CVS_START=null, CVS_END=null, CVS_MIN=null, CVS_MAX=null, CVS_INIT=false;
+const CVS_WEBCH=["SEARCH","SHOPPING","PERFORMANCE_MAX"];
+function cvsBounds(){ let mn=null,mx=null;
+  for(const cid in DATA.accounts){ const g=(((DATA.accounts[cid].funnel_daily)||{}).google)||{};
+    for(const d in g){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; } } return [mn,mx]; }
+function cvsInit(){ const [mn,mx]=cvsBounds(); CVS_MIN=mn; CVS_MAX=mx;
+  if(mx&&(!CVS_END||CVS_END>mx)) CVS_END=mx;
+  if(mx&&(!CVS_START||CVS_START<mn||CVS_START>CVS_END)){ CVS_START=dshift(mx,-13); if(CVS_START<mn)CVS_START=mn; } }
+function cvsDaysLen(){ let n=0,d=CVS_START; while(d<=CVS_END&&n<400){n++;d=dshift(d,1);} return n; }
+function cvsQuick(n){ CVS_END=CVS_MAX; CVS_START=dshift(CVS_MAX,-(n-1)); if(CVS_START<CVS_MIN)CVS_START=CVS_MIN; renderCvs(); }
+function cvsSetRange(){ let a=document.getElementById('cvs1').value,b=document.getElementById('cvs2').value;
+  if(a&&b){ if(a>b){const t=a;a=b;b=t;} CVS_START=a;CVS_END=b; renderCvs(); } }
+function cvsDateCtl(){ const L=cvsDaysLen(), isQ=(CVS_END===CVS_MAX);
+  const qb=[7,14,30].map(n=>`<button class="${isQ&&L===n?'active':''}" onclick="cvsQuick(${n})">${n}д</button>`).join("");
+  return `<span class="label">Період</span><span class="seg">${qb}</span>
+    <input type="date" id="cvs1" value="${CVS_START}" min="${CVS_MIN}" max="${CVS_MAX}"> <span class="mut">—</span>
+    <input type="date" id="cvs2" value="${CVS_END}" min="${CVS_MIN}" max="${CVS_MAX}">
+    <button class="apply" onclick="cvsSetRange()">Показати</button>`; }
+function cvsDates(){ const out=[]; let d=CVS_START; while(d<=CVS_END&&out.length<400){out.push(d);d=dshift(d,1);} return out; }
+function cvsClicks(cid,date){ const md=(DATA.accounts[cid]||{}).metrics_daily||{}; let c=0;
+  CVS_WEBCH.forEach(ch=>{ const dd=(md[ch]||{})[date]; if(dd) c+=dd.clicks||0; }); return c; }
+function cvsSess(cid,date){ const g=(((DATA.accounts[cid]||{}).funnel_daily||{}).google||{})[date]; return g?(g.sessions||0):0; }
+function cvsStatus(m){ if(m>=85&&m<=115) return ['🟢','#3fb950']; if(m>115) return ['🟡','#d29922']; if(m>=60) return ['🟡','#d29922']; return ['🔴','#f85149']; }
+function renderCvs(){
+  const ctl=document.getElementById("cvsDateCtl"), sum=document.getElementById("cvsSummary"), wrap=document.getElementById("cvsWrap");
+  if(!wrap) return;
+  if(!CVS_INIT){ cvsInit(); CVS_INIT=true; }
+  ctl.innerHTML=cvsDateCtl();
+  if(!CVS_MAX){ sum.innerHTML=""; wrap.innerHTML='<div class="note">Немає даних GA4 (funnel) — воронка ще не зібрана.</div>'; return; }
+  const dates=cvsDates();
+  // зведення по КОЖНОМУ сайту (завжди всі 3)
+  const cids=Object.keys(DATA.accounts);
+  let rows="";
+  cids.forEach(cid=>{ let clk=0,ses=0; dates.forEach(dt=>{ clk+=cvsClicks(cid,dt); ses+=cvsSess(cid,dt); });
+    const m=clk?ses/clk*100:0, [ic,col]=cvsStatus(m), nm=(DATA.accounts[cid].name||cid).replace(/ .*/,"");
+    rows+=`<tr><td class="metric">${nm}</td><td>${clk.toLocaleString("en-US")}</td><td>${ses.toLocaleString("en-US")}</td>`
+      +`<td>${(ses-clk).toLocaleString("en-US")}</td><td style="color:${col};font-weight:600">${m.toFixed(0)}%</td><td>${ic}</td></tr>`; });
+  sum.innerHTML=`<div class="section-title" style="margin-top:0">Збіг по сайтах <span class="sub">· ${CVS_START}…${CVS_END} (${cvsDaysLen()} дн.)</span></div>`
+    +`<table><thead><tr><th>Сайт</th><th>Ads кліки</th><th>GA4 сеанси</th><th>Δ</th><th>Збіг %</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  // денна деталізація для вибраного акаунта (або сума всіх при «Усі 3»)
+  const accs = ACC==="ALL"? cids : [ACC];
+  const accName=ACC==="ALL"?"усі 3":((DATA.accounts[ACC]||{}).name||ACC);
+  let drows="", tc=0, ts=0;
+  dates.slice().reverse().forEach(dt=>{ let clk=0,ses=0; accs.forEach(cid=>{ clk+=cvsClicks(cid,dt); ses+=cvsSess(cid,dt); });
+    if(!clk&&!ses) return; tc+=clk; ts+=ses; const m=clk?ses/clk*100:0, [ic,col]=cvsStatus(m);
+    drows+=`<tr><td>${fdate(dt)}</td><td>${clk.toLocaleString("en-US")}</td><td>${ses.toLocaleString("en-US")}</td>`
+      +`<td style="color:${col};font-weight:600">${m.toFixed(0)}%</td><td>${ic}</td></tr>`; });
+  const tm=tc?ts/tc*100:0, [tic,tcol]=cvsStatus(tm);
+  wrap.innerHTML=`<div class="section-title">По днях <span class="sub">· ${accName}</span></div>`
+    +`<table class="roastbl"><thead><tr><th>Дата</th><th>Ads кліки</th><th>GA4 сеанси</th><th>Збіг %</th><th></th></tr></thead><tbody>${drows}`
+    +`<tr style="font-weight:700;border-top:2px solid var(--border)"><td>Разом</td><td>${tc.toLocaleString("en-US")}</td><td>${ts.toLocaleString("en-US")}</td><td style="color:${tcol}">${tm.toFixed(0)}%</td><td>${tic}</td></tr></tbody></table>`;
+}
 
 // ── вкладка ЗАПИТИ (лог із Google-таблиць, поле stlog) ──────────────
 let ST_SORT="clk", ST_DIR=-1, ST_INIT=false;
