@@ -148,6 +148,7 @@
     <button data-view="coverage">🏙 Покриття</button>
     <button data-view="merchant">🛒 Товари</button>
     <button data-view="stlog">🔎 Запити (лог)</button>
+    <button data-view="hourly">🕐 Години</button>
   </div>
   <div class="controls">
     <span class="label">Акаунт</span>
@@ -372,6 +373,21 @@
     <div id="stStats" class="sub" style="margin:0 0 8px"></div>
     <div id="stTrend" style="margin:0 0 12px"></div>
     <div id="stWrap"></div>
+  </div>
+
+  <div id="hourlyView" class="hidden">
+    <div class="metctl" id="hrDateCtl" style="margin:2px 0 8px"></div>
+    <div class="metctl" style="margin:0 0 12px">
+      <span class="label">Платформа</span>
+      <span class="seg" id="hrPlatSeg">
+        <button data-hp="google" class="active">Google Ads</button>
+        <button data-hp="bing">Bing</button>
+        <button data-hp="both">Разом</button>
+      </span>
+      <span class="sub" id="hrScope" style="margin-left:12px"></span>
+    </div>
+    <div id="hrChart" style="margin:0 0 14px"></div>
+    <div id="hrWrap"></div>
   </div>
 </div>
 </div>
@@ -983,7 +999,7 @@ function buildAccSeg(){
     b.classList.add("active"); ACC=b.dataset.acc; refresh();
   });
 }
-function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else render(); }
+function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else if(VIEW==="hourly") renderHourly(); else render(); }
 let FUN_FILTER="all", FUN_START=null, FUN_END=null, FUN_CMP="prev";
 const FUN_LBL={all:"увесь трафік",google:"тільки Google Ads",bing:"тільки Bing"};
 const FUN_CMP_LBL={prev:"попередній період",yoy:"рік тому",none:"без порівняння"};
@@ -1342,16 +1358,75 @@ function setView(v){
   document.getElementById("coverageView").classList.toggle("hidden", v!=="coverage");
   document.getElementById("merchantView").classList.toggle("hidden", v!=="merchant");
   document.getElementById("stlogView").classList.toggle("hidden", v!=="stlog");
+  document.getElementById("hourlyView").classList.toggle("hidden", v!=="hourly");
   const dash = v==="dash";
   document.getElementById("typeLabel").style.display = dash?"":"none";
   document.getElementById("chSeg").style.display = dash?"":"none";
   // у воронці свій фільтр трафіку — глобальну платформу ховаємо
-  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant";
+  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant" && v!=="stlog" && v!=="hourly";
   document.getElementById("platLabel").style.display = showPlat?"":"none";
   document.getElementById("pfSeg").style.display = showPlat?"":"none";
   refresh();
 }
 document.querySelectorAll("#viewSeg button").forEach(b=>b.onclick=()=>setView(b.dataset.view));
+
+// ── вкладка ГОДИНИ (Hour of Day) ─────────────────────────────────────
+let HR_START=null, HR_END=null, HR_MIN=null, HR_MAX=null, HR_PLAT="google", HR_INIT=false;
+function hrBounds(){ let mn=null,mx=null;
+  for(const cid in DATA.accounts){ const h=(DATA.accounts[cid].hourly)||{};
+    for(const pl in h){ for(const d in h[pl]){ if(!mn||d<mn)mn=d; if(!mx||d>mx)mx=d; } } }
+  return [mn,mx]; }
+function hrInit(){ const [mn,mx]=hrBounds(); HR_MIN=mn; HR_MAX=mx;
+  if(mx&&(!HR_END||HR_END>mx)) HR_END=mx;
+  if(mx&&(!HR_START||HR_START<mn||HR_START>HR_END)){ HR_START=dshift(mx,-6); if(HR_START<mn)HR_START=mn; } }
+function hrDaysLen(){ let n=0,d=HR_START; while(d<=HR_END&&n<400){n++;d=dshift(d,1);} return n; }
+function hrQuick(n){ HR_END=HR_MAX; HR_START=dshift(HR_MAX,-(n-1)); if(HR_START<HR_MIN)HR_START=HR_MIN; renderHourly(); }
+function hrSetRange(){ let a=document.getElementById('hr1').value,b=document.getElementById('hr2').value;
+  if(a&&b){ if(a>b){const t=a;a=b;b=t;} HR_START=a;HR_END=b; renderHourly(); } }
+function hrDateCtl(){ const L=hrDaysLen(), isQ=(HR_END===HR_MAX);
+  const qb=[1,7,14,30].map(n=>`<button class="${isQ&&L===n?'active':''}" onclick="hrQuick(${n})">${n===1?'1д':n+'д'}</button>`).join("");
+  return `<span class="label">Період</span><span class="seg">${qb}</span>
+    <input type="date" id="hr1" value="${HR_START}" min="${HR_MIN}" max="${HR_MAX}"> <span class="mut">—</span>
+    <input type="date" id="hr2" value="${HR_END}" min="${HR_MIN}" max="${HR_MAX}">
+    <button class="apply" onclick="hrSetRange()">Показати</button>`; }
+function hrPlatAvail(){ for(const cid in DATA.accounts){ if(((DATA.accounts[cid].hourly)||{}).bing) return true; } return false; }
+function hrAgg(){
+  const accs = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  const plats = HR_PLAT==="both"? ["google","bing"] : [HR_PLAT];
+  const H=Array.from({length:24},()=>[0,0,0,0]);
+  const dates=[]; let d=HR_START; while(d<=HR_END&&dates.length<400){dates.push(d);d=dshift(d,1);}
+  accs.forEach(cid=>{ const h=(DATA.accounts[cid]||{}).hourly||{};
+    plats.forEach(pl=>{ const pd=h[pl]; if(!pd)return;
+      dates.forEach(dt=>{ const dd=pd[dt]; if(!dd)return;
+        for(let hr=0;hr<24;hr++){ const v=dd[hr]; if(!v)continue;
+          H[hr][0]+=v[0]; H[hr][1]+=v[1]; H[hr][2]+=v[2]; H[hr][3]+=v[3]; } }); }); });
+  return H; }
+function renderHourly(){
+  const ctl=document.getElementById("hrDateCtl"), wrap=document.getElementById("hrWrap"),
+    chart=document.getElementById("hrChart"), scope=document.getElementById("hrScope");
+  if(!wrap) return;
+  if(!HR_INIT){ hrInit(); HR_INIT=true; }
+  document.querySelectorAll("#hrPlatSeg button").forEach(b=>b.classList.toggle("active", b.dataset.hp===HR_PLAT));
+  ctl.innerHTML=hrDateCtl();
+  const accName=ACC==="ALL"?"усі 3":((DATA.accounts[ACC]||{}).name||ACC);
+  const platName=HR_PLAT==="google"?"Google":HR_PLAT==="bing"?"Bing":"Google+Bing";
+  scope.textContent=`· ${accName} · ${platName} · ${HR_START}…${HR_END} (${hrDaysLen()} дн.)`;
+  const H=hrAgg();
+  const tot=H.reduce((a,h)=>[a[0]+h[0],a[1]+h[1],a[2]+h[2],a[3]+h[3]],[0,0,0,0]);
+  if(!tot[0] && !tot[1]){ chart.innerHTML=""; wrap.innerHTML='<div class="note">Немає даних за обраний період'+((HR_PLAT!=="google"&&!hrPlatAvail())?' — Bing-години ще не підключені (поки лише Google)':'')+'.</div>'; return; }
+  const mx=Math.max(1,...H.map(h=>h[0]));
+  chart.innerHTML='<div style="display:flex;align-items:flex-end;gap:2px;height:80px">'+
+    H.map((h,i)=>`<div title="${String(i).padStart(2,'0')}:00 — ${h[0]} кл · $${h[1].toFixed(0)} · ${h[2].toFixed(1)} конв" style="flex:1;background:#58a6ff;border-radius:2px 2px 0 0;height:${Math.round(h[0]/mx*100)}%;min-height:2px"></div>`).join("")+
+    '</div><div class="sub" style="margin-top:2px">Кліки по годинах доби (пояс акаунта)</div>';
+  const cell=(lbl,h,bold)=>{ const cr=h[0]?(h[2]/h[0]*100):0, cpa=h[2]?(h[1]/h[2]):0; const st=bold?' style="font-weight:700;border-top:2px solid var(--border)"':'';
+    return `<tr${st}><td>${lbl}</td><td>${h[0].toLocaleString("en-US")}</td><td>$${h[1].toFixed(0)}</td>`
+      +`<td>${h[2].toFixed(1)}</td><td>${cr.toFixed(1)}%</td><td>${h[2]?'$'+cpa.toFixed(2):'—'}</td></tr>`; };
+  let html='<table class="roastbl"><thead><tr><th>Година</th><th>Кліки</th><th>Витрати</th><th>Конв</th><th>CR%</th><th>CPA</th></tr></thead><tbody>';
+  H.forEach((h,i)=>{ html+=cell(String(i).padStart(2,'0')+":00", h); });
+  html+=cell("Разом", tot, true)+'</tbody></table>';
+  wrap.innerHTML=html;
+}
+document.querySelectorAll("#hrPlatSeg button").forEach(b=>b.onclick=()=>{ HR_PLAT=b.dataset.hp; renderHourly(); });
 
 // ── вкладка ЗАПИТИ (лог із Google-таблиць, поле stlog) ──────────────
 let ST_SORT="clk", ST_DIR=-1, ST_INIT=false;
