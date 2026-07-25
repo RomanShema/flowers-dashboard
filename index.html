@@ -1155,12 +1155,12 @@ function renderRoas(){
   window._roasNames = R.map(x=>x.c.name);
   document.getElementById("roasCopy").textContent = `📋 Копіювати назви (${R.length})`;
   const fmtV = isRoas? (v=>v.toFixed(2)) : (v=>fmtMoney(v));
-  let html=`<table class="roastbl"><thead><tr><th>Кампанія</th><th>Акаунт</th><th>Тип</th><th>${isRoas?"Ціль ROAS":"Ціль CPA"}</th><th>${isRoas?"Факт ROAS":"Факт CPA"}</th><th>Δ</th><th>Витрати</th><th>Конв</th>${isRoas?"<th>Цінність</th>":""}</tr></thead><tbody>`;
+  let html=`<table class="roastbl"><thead><tr><th>Кампанія</th><th>Акаунт</th><th>Тип</th><th>${isRoas?"Ціль ROAS":"Ціль CPA"}</th><th>${isRoas?"Факт ROAS":"Факт CPA"}</th><th>Δ</th><th>Витрати</th><th>Конв</th><th>CPA</th>${isRoas?"<th>Цінність</th>":""}</tr></thead><tbody>`;
   R.forEach(x=>{ const cls=x.bad?"bad":"good";
     html+=`<tr><td class="cn" title="${x.c.name}">${x.c.name}</td><td>${x.c.acc}</td><td class="mut2">${chShort(x.c.channel)}</td>`
       +`<td>${fmtV(x.tgt)}</td><td class="${cls}"><b>${fmtV(x.actual)}</b></td>`
       +`<td class="${cls}">${x.dpct>=0?'+':''}${x.dpct.toFixed(0)}%</td>`
-      +`<td>${fmtMoney(x.cost)}</td><td>${Math.round(x.conv)}</td>${isRoas?`<td>${fmtMoney(x.value)}</td>`:""}</tr>`;
+      +`<td>${fmtMoney(x.cost)}</td><td>${Math.round(x.conv)}</td><td>${x.conv>0?fmtMoney(x.cost/x.conv):'—'}</td>${isRoas?`<td>${fmtMoney(x.value)}</td>`:""}</tr>`;
   });
   html+="</tbody></table>";
   wrap.innerHTML=html+`<div class="note" style="margin-top:10px"><span style="color:#f85149">Червоне</span> = ${isRoas?"факт нижчий за ціль (недотягує)":"факт CPA вищий за ціль (платимо більше)"}; <span style="color:#3fb950">зелене</span> = ${isRoas?"факт ≥ ціль":"факт ≤ ціль"}. Показані лише кампанії з активною ціллю ${isRoas?"ROAS":"CPA"} і витратами за період.</div>`;
