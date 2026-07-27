@@ -45,7 +45,7 @@ def page(mode, pr):
     collage="".join(f'<img loading="lazy" src="{C}/v2/{im}" alt="">' for _,_,_,im in pr["rel"])
     crumb=" &frasl; ".join(pr["crumb"][:-1])+f' &frasl; <b>{pr["crumb"][-1]}</b>'
     pricehtml=f'${pr["price"]}'+(f' <s>${pr["old"]}</s>' if pr["old"] else '')
-    A=lambda t:f'<div class="anno">{t}</div>' if mode!="original" else ''
+    A=lambda t:''
     if mode=="original":
         bg='#e9e9e9';btitle='Оригинал';btext='Точная копия текущей страницы blossomflowerdelivery.com — как есть, без изменений.';bul=''
         eyebrow_html='';subhead='';delivery=''
@@ -69,11 +69,11 @@ def page(mode, pr):
         eyebrow_html=A('NEW — eyebrow под тип запроса')+'<span class="eyebrow">Funeral &amp; Sympathy · Casket Sprays</span>'
         subhead=A('NEW — H1-подзаголовок funeral + город')+'<div class="subhead">Funeral &amp; Sympathy Flowers in Houston, TX</div>'
         delivery=A('NEW — строка доставки под funeral')+'<div class="deliv">&#128205; Casket spray delivery to <b>funeral homes and residences in Houston, TX</b> — we coordinate timing around the service.</div>'
-        counters='<div class="rmbox">Для funeral убрать: «36 people viewing», «6 sold in 24h», Flash Sale</div>'
+        counters=''
         flash=''
         seo='<h2 class="center-h">Description</h2>'+A('NEW — персонализированный SEO-блок под funeral')+'<div class="pers"><p>A casket cover is one of the most meaningful tributes you can send. This full-length spray of fresh, seasonal blooms is prepared by our network of local florists and delivered with care to the funeral home or family residence in Houston, timed around the service.</p><p>Blossom coordinates funeral and sympathy deliveries across Houston — casket sprays, standing sprays, wreaths and sympathy arrangements. With more than 5,000 reviews on Google, families trust us to handle these orders thoughtfully.</p></div>'
         faq=A('NEW — funeral FAQ + FAQPage JSON-LD')+'<div class="faq"><details open><summary>Can you deliver a casket cover to a funeral home in Houston?</summary><p>Yes. Select "Funeral home" as the recipient location; we coordinate delivery timing with the funeral home around the service.</p></details><details><summary>Will the arrangement arrive before the service?</summary><p>We prioritize funeral deliveries and time them around the service.</p></details><details><summary>What message is appropriate on the card?</summary><p>Short, sincere messages work best — e.g. "With deepest sympathy" or "In loving memory."</p></details></div>'
-    demoblock=f'<div class="demo" style="background:{bg}"><div class="in"><h3>&#127800; {btitle} — {pr["title"]}</h3><p>{btext}</p>'+(f'<ul>{bul}</ul>' if bul else '')+'</div></div>'
+    demoblock=''
     nav=[('original','Оригинал'),('general','Общий запрос'),('funeral','Funeral')]
     switch="".join(f'<a href="{m}.html" class="sw {"on" if m==mode else ""}">{t}</a>' for m,t in nav)
     eyebrow_block=eyebrow_html if mode!='original' else ''
@@ -159,11 +159,6 @@ h1.p{{font-size:30px;font-weight:800;margin:8px 0 3px;text-transform:uppercase;}
   </div>
 </div>
 <div class="sec">{seo}{faq}</div>
-<div class="rowhd"><h2>CUSTOMERS ALSO CHOOSE</h2><span class="viewall">VIEW ALL</span></div>
-<div class="carou"><span class="nav-a">&#8249;</span><div class="row">{rel}</div><span class="nav-a">&#8250;</span></div>
-<div class="rowhd"><h2>PEOPLE ALSO BOUGHT</h2><span class="viewall">VIEW ALL</span></div>
-<div class="carou"><span class="nav-a">&#8249;</span><div class="row">{rel2}</div><span class="nav-a">&#8250;</span></div>
-<div class="collage">{collage}</div>
 <div class="foot"><div class="in"><img class="logo2" src="{logo}" alt="the Blossom">
   <div class="fcols"><div><h4>COMPANY</h4><a>About Us</a></div><div><h4>ACCOUNT</h4><a>Manage Your Account</a></div><div><h4>HELP</h4><a>Customer Service</a><a>Delivery Policy</a><a>Refund Policy</a></div><div><h4>SITEMAP</h4><a>States</a><a>Cities</a></div><div><h4>CONTACT</h4><a>(877) 861-7986</a><a>service@blossomflowerdelivery.com</a></div></div>
   <div class="pays"><div class="grp"><span class="lbl">OUR PARTNERS</span><img src="{C}/fedex.png" alt="FedEx"><img src="{C}/ups.png" alt="UPS"></div><div class="grp"><span class="lbl">OUR PAYMENT METHODS</span>{payimg}</div></div>
