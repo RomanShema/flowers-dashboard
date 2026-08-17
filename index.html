@@ -150,6 +150,7 @@
     <button data-view="stlog">🔎 Запити (лог)</button>
     <button data-view="hourly">🕐 Години</button>
     <button data-view="cvs">🔗 Кліки↔Сеанси</button>
+    <button data-view="clag">⏳ Догрузка конв</button>
   </div>
   <div class="controls">
     <span class="label">Акаунт</span>
@@ -404,6 +405,21 @@
     <div class="sub" style="margin:0 0 12px">Порівняння <b>кліків реклами</b> із <b>сеансами GA4</b> (той самий канал) по кожному сайту. Норма — сеансів ~85–100% від кліків; сильно менше = втрата трекінгу (редирект, cookie-згода, повільне завантаження).</div>
     <div id="cvsSummary" style="margin:0 0 16px"></div>
     <div id="cvsWrap"></div>
+  </div>
+
+  <div id="clagView" class="hidden">
+    <div class="metctl" style="margin:2px 0 10px">
+      <span class="label">Тип кампаній</span>
+      <span class="seg" id="clagChSeg">
+        <button data-cc="search" class="active">Пошук</button>
+        <button data-cc="pmax">PMax</button>
+        <button data-cc="total">Разом</button>
+      </span>
+      <span class="sub" id="clagScope" style="margin-left:12px"></span>
+    </div>
+    <div class="sub" style="margin:0 0 12px">Скільки конверсій приписується до дня <b>заднім числом</b> і за скільки днів «дозрівають». Щодня знімається снапшот; крива будується поступово (за кілька днів спостережень).</div>
+    <div id="clagCurve" style="margin:0 0 16px"></div>
+    <div id="clagWrap"></div>
   </div>
 </div>
 </div>
@@ -1048,7 +1064,7 @@ function buildAccSeg(){
     b.classList.add("active"); ACC=b.dataset.acc; refresh();
   });
 }
-function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else if(VIEW==="hourly") renderHourly(); else if(VIEW==="cvs") renderCvs(); else render(); }
+function refresh(){ if(VIEW==="map") renderMap(); else if(VIEW==="funnel") renderFunnel(); else if(VIEW==="roas") renderRoas(); else if(VIEW==="budget") renderBudget(); else if(VIEW==="coverage") renderCoverage(); else if(VIEW==="merchant") renderMerchant(); else if(VIEW==="stlog") renderStlog(); else if(VIEW==="hourly") renderHourly(); else if(VIEW==="cvs") renderCvs(); else if(VIEW==="clag") renderClag(); else render(); }
 let FUN_FILTER="all", FUN_START=null, FUN_END=null, FUN_CMP="prev";
 const FUN_LBL={all:"увесь трафік",google:"тільки Google Ads",bing:"тільки Bing"};
 const FUN_CMP_LBL={prev:"попередній період",yoy:"рік тому",none:"без порівняння"};
@@ -1409,11 +1425,12 @@ function setView(v){
   document.getElementById("stlogView").classList.toggle("hidden", v!=="stlog");
   document.getElementById("hourlyView").classList.toggle("hidden", v!=="hourly");
   document.getElementById("cvsView").classList.toggle("hidden", v!=="cvs");
+  document.getElementById("clagView").classList.toggle("hidden", v!=="clag");
   const dash = v==="dash";
   document.getElementById("typeLabel").style.display = dash?"":"none";
   document.getElementById("chSeg").style.display = dash?"":"none";
   // у воронці свій фільтр трафіку — глобальну платформу ховаємо
-  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant" && v!=="stlog" && v!=="hourly" && v!=="cvs";
+  const showPlat = v!=="funnel" && v!=="coverage" && v!=="merchant" && v!=="stlog" && v!=="hourly" && v!=="cvs" && v!=="clag";
   document.getElementById("platLabel").style.display = showPlat?"":"none";
   document.getElementById("pfSeg").style.display = showPlat?"":"none";
   refresh();
@@ -1540,6 +1557,49 @@ function renderCvs(){
     +(CVS_PLAT!=="google"?`<div class="sub" style="margin-top:6px">Bing-кліки доступні з ~1 червня 2026.</div>`:"");
 }
 document.querySelectorAll("#cvsPlatSeg button").forEach(b=>b.onclick=()=>{ CVS_PLAT=b.dataset.cp; renderCvs(); });
+
+// ── вкладка ДОГРУЗКА КОНВЕРСІЙ (backfill lag) ─────────────────────────
+let CLAG_CH="search";
+function clagDaysBetween(a,b){ return Math.round((new Date(b+"T00:00:00Z")-new Date(a+"T00:00:00Z"))/86400000); }
+function clagMerged(){
+  const cids = ACC==="ALL"? Object.keys(DATA.accounts):[ACC];
+  const out={};
+  cids.forEach(cid=>{ const cl=(((DATA.accounts[cid]||{}).conv_lag)||{})[CLAG_CH]||{};
+    for(const t in cl){ for(const o in cl[t]){ (out[t]=out[t]||{})[o]=(out[t][o]||0)+cl[t][o]; } } });
+  return out;
+}
+function renderClag(){
+  const curve=document.getElementById("clagCurve"), wrap=document.getElementById("clagWrap"), scope=document.getElementById("clagScope");
+  if(!wrap) return;
+  document.querySelectorAll("#clagChSeg button").forEach(b=>b.classList.toggle("active", b.dataset.cc===CLAG_CH));
+  const accName=ACC==="ALL"?"усі 3":((DATA.accounts[ACC]||{}).name||ACC);
+  const chName=CLAG_CH==="search"?"Пошук":CLAG_CH==="pmax"?"PMax":"Разом";
+  scope.textContent=`· ${accName} · ${chName}`;
+  const data=clagMerged();
+  const targets=Object.keys(data).sort().reverse();
+  if(!targets.length){ curve.innerHTML=""; wrap.innerHTML='<div class="note">Ще нема снапшотів для цього проєкту/типу. Дані накопичуються з кожним щоденним збором.</div>'; return; }
+  const rows=targets.map(t=>{ const obs=Object.keys(data[t]).sort(); const first=data[t][obs[0]], cur=data[t][obs[obs.length-1]];
+    const g=cur-first, gp=first? g/first*100:0;
+    return {t, first, cur, g, gp, days:obs.length, obs:data[t]}; });
+  // крива догрузки: середній % від фінального по кожному lag
+  const lagAgg={};
+  rows.forEach(r=>{ const final=r.cur; if(final<=0)return;
+    if(Object.keys(r.obs).length<2) return;   // крива лише по днях, що спостерігались ≥2 рази (є реальна догрузка)
+    for(const o in r.obs){ const lag=clagDaysBetween(r.t,o); if(lag<1)continue; (lagAgg[lag]=lagAgg[lag]||[]).push(r.obs[o]/final*100); } });
+  const lags=Object.keys(lagAgg).map(Number).sort((a,b)=>a-b);
+  if(lags.length){ curve.innerHTML='<div class="section-title" style="margin-top:0">Крива догрузки <span class="sub">(середній % від фінального значення на кожен день спостереження)</span></div>'
+    +'<table class="roastbl"><thead><tr><th>Через днів</th><th>% від фінального</th><th>На скількох днях</th></tr></thead><tbody>'
+    +lags.map(L=>{ const a=lagAgg[L], avg=a.reduce((s,x)=>s+x,0)/a.length;
+      return `<tr><td>+${L} дн.</td><td><b>${avg.toFixed(0)}%</b></td><td>${a.length}</td></tr>`; }).join("")+'</tbody></table>'; }
+  else curve.innerHTML='<div class="note">Крива догрузки зʼявиться за кілька днів (потрібно щонайменше 2 спостереження одного дня).</div>';
+  let html='<div class="section-title">По цільових днях</div><table class="roastbl"><thead><tr><th>Дата</th><th>Перше спост.</th><th>Зараз</th><th>Δ конв</th><th>Δ %</th><th>Днів спост.</th></tr></thead><tbody>';
+  rows.forEach(r=>{ const gc=r.g>0.05?"#3fb950":r.g<-0.05?"#f85149":"var(--muted)";
+    html+=`<tr><td>${fdate(r.t)}</td><td>${r.first.toFixed(1)}</td><td>${r.cur.toFixed(1)}</td>`
+      +`<td style="color:${gc}">${r.g>0?'+':''}${r.g.toFixed(1)}</td><td style="color:${gc}">${r.g>0?'+':''}${r.gp.toFixed(0)}%</td><td>${r.days}</td></tr>`; });
+  html+='</tbody></table>';
+  wrap.innerHTML=html;
+}
+document.querySelectorAll("#clagChSeg button").forEach(b=>b.onclick=()=>{ CLAG_CH=b.dataset.cc; renderClag(); });
 
 // ── вкладка ЗАПИТИ (лог із Google-таблиць, поле stlog) ──────────────
 let ST_SORT="clk", ST_DIR=-1, ST_INIT=false;
