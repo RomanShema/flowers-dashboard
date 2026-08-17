@@ -413,24 +413,35 @@ const PERIODS=[["wow","Тиждень тому"],["yoy2025","2025 (рік том
 // «оновлено» у ЛОКАЛЬНОМУ часі глядача (generated_at приходить у LA-поясі)
 function fmtLocalTS(iso){ if(!iso) return "—"; const d=new Date(iso); if(isNaN(d)) return String(iso).replace("T"," ").slice(0,16);
   const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
-const IS_LOCAL = (location.hostname==="localhost"||location.hostname==="127.0.0.1");
-// кнопка «Оновити зараз» — працює лише на локальному сервері (refresh_server.py)
+// локальний сервер оновлення (refresh_server.py на твоєму Mac)
+const SRV = "http://localhost:8799";
+const IS_REMOTE = !(location.hostname==="localhost"||location.hostname==="127.0.0.1");
+// показати кнопку лише якщо локальний сервер доступний (тобто твій Mac увімкнений)
+async function probeRefreshServer(){
+  try{ const c=new AbortController(); setTimeout(()=>c.abort(),1500);
+    const r=await fetch(SRV+"/refresh/status?t="+Date.now(),{signal:c.signal});
+    if(r.ok) document.getElementById("refreshBtn").style.display="";
+  }catch(e){ /* сервер недоступний — кнопку не показуємо */ }
+}
 async function doRefresh(){
   const btn=document.getElementById("refreshBtn"), msg=document.getElementById("refreshMsg");
   btn.disabled=true; btn.textContent="⏳ Оновлюю…"; msg.textContent="збираю дані (~3–4 хв), не закривай вкладку…";
   try{
-    const r=await (await fetch("/refresh?t="+Date.now())).json();
+    const r=await (await fetch(SRV+"/refresh?t="+Date.now())).json();
     if(r.already) msg.textContent="збір уже йде, чекаю…";
     const t0=Date.now();
     const poll=setInterval(async()=>{
-      try{ const s=await (await fetch("/refresh/status?t="+Date.now())).json();
+      try{ const s=await (await fetch(SRV+"/refresh/status?t="+Date.now())).json();
         const sec=Math.round((Date.now()-t0)/1000);
         if(s.running){ msg.textContent=`збираю… ${sec}с`; }
-        else { clearInterval(poll); msg.textContent = s.ok===false ? "⚠ збір завершився з помилкою" : "✓ готово, перезавантажую…";
-          setTimeout(()=>location.reload(), 1500); }
+        else { clearInterval(poll);
+          if(s.ok===false){ msg.textContent="⚠ збір завершився з помилкою"; btn.disabled=false; btn.textContent="🔄 Оновити зараз"; return; }
+          if(IS_REMOTE){ msg.textContent="✓ опубліковано, GitHub оновлює сторінку ~1–2 хв, перезавантажую…"; setTimeout(()=>location.reload(), 90000); }
+          else { msg.textContent="✓ готово, перезавантажую…"; setTimeout(()=>location.reload(), 1500); }
+        }
       }catch(e){}
     },5000);
-  }catch(e){ btn.disabled=false; btn.textContent="🔄 Оновити зараз"; msg.textContent="✗ локальний сервер недоступний (запусти дашборд на localhost:8799)"; }
+  }catch(e){ btn.disabled=false; btn.textContent="🔄 Оновити зараз"; msg.textContent="✗ локальний сервер недоступний (Mac вимкнений або сервер не запущено)"; }
 }
 
 // метрики: ключ, назва, форматер, чи "більше=краще"
@@ -1718,7 +1729,7 @@ function showApp(){
   }
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
-  if(IS_LOCAL) document.getElementById("refreshBtn").style.display="";
+  probeRefreshServer();
   buildAccSeg();
   pmaxUpInit();
   render();
