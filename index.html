@@ -135,7 +135,7 @@
 <div id="app" class="hidden">
 <header>
   <h1>🌸 Flowers Ads — Daily Monitor</h1>
-  <div class="meta">Опорний день: <b id="refDate">—</b> · оновлено: <b id="genAt">—</b><span id="staleNote"></span></div>
+  <div class="meta">Опорний день: <b id="refDate">—</b> · оновлено: <b id="genAt">—</b><span id="staleNote"></span><button id="refreshBtn" onclick="doRefresh()" class="apply" style="display:none;margin-left:14px;font-size:12px;padding:4px 10px">🔄 Оновити зараз</button><span id="refreshMsg" class="sub" style="margin-left:8px"></span></div>
 </header>
 
 <div class="wrap">
@@ -410,6 +410,28 @@
 
 <script>
 const PERIODS=[["wow","Тиждень тому"],["yoy2025","2025 (рік тому)"],["yoy2024","2024 (2 роки)"]];
+// «оновлено» у ЛОКАЛЬНОМУ часі глядача (generated_at приходить у LA-поясі)
+function fmtLocalTS(iso){ if(!iso) return "—"; const d=new Date(iso); if(isNaN(d)) return String(iso).replace("T"," ").slice(0,16);
+  const p=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; }
+const IS_LOCAL = (location.hostname==="localhost"||location.hostname==="127.0.0.1");
+// кнопка «Оновити зараз» — працює лише на локальному сервері (refresh_server.py)
+async function doRefresh(){
+  const btn=document.getElementById("refreshBtn"), msg=document.getElementById("refreshMsg");
+  btn.disabled=true; btn.textContent="⏳ Оновлюю…"; msg.textContent="збираю дані (~3–4 хв), не закривай вкладку…";
+  try{
+    const r=await (await fetch("/refresh?t="+Date.now())).json();
+    if(r.already) msg.textContent="збір уже йде, чекаю…";
+    const t0=Date.now();
+    const poll=setInterval(async()=>{
+      try{ const s=await (await fetch("/refresh/status?t="+Date.now())).json();
+        const sec=Math.round((Date.now()-t0)/1000);
+        if(s.running){ msg.textContent=`збираю… ${sec}с`; }
+        else { clearInterval(poll); msg.textContent = s.ok===false ? "⚠ збір завершився з помилкою" : "✓ готово, перезавантажую…";
+          setTimeout(()=>location.reload(), 1500); }
+      }catch(e){}
+    },5000);
+  }catch(e){ btn.disabled=false; btn.textContent="🔄 Оновити зараз"; msg.textContent="✗ локальний сервер недоступний (запусти дашборд на localhost:8799)"; }
+}
 
 // метрики: ключ, назва, форматер, чи "більше=краще"
 const METRICS=[
@@ -1690,12 +1712,13 @@ async function renderMap(){
 
 function showApp(){
   document.getElementById("refDate").textContent=DATA.reference_date;
-  document.getElementById("genAt").textContent=(DATA.generated_at||"").replace("T"," ").slice(0,16);
+  document.getElementById("genAt").textContent=fmtLocalTS(DATA.generated_at);
   if(DATA.stale&&DATA.stale.length){
     document.getElementById("staleNote").innerHTML=` <span class="stale">⚠ ${DATA.stale.length} днів з кешу (ліміт API)</span>`;
   }
   document.getElementById("gate").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
+  if(IS_LOCAL) document.getElementById("refreshBtn").style.display="";
   buildAccSeg();
   pmaxUpInit();
   render();
@@ -1738,7 +1761,7 @@ const cached=sessionStorage.getItem("data"), cpw=sessionStorage.getItem("pw");
 if(cached && cpw){ try{ DATA=JSON.parse(cached); showApp(); }catch(e){} }
 if(cpw){ loadData(cpw).then(()=>{ if(DATA){
   document.getElementById("refDate").textContent=DATA.reference_date;
-  document.getElementById("genAt").textContent=(DATA.generated_at||"").replace("T"," ").slice(0,16);
+  document.getElementById("genAt").textContent=fmtLocalTS(DATA.generated_at);
   const sn=document.getElementById("staleNote"); if(sn) sn.innerHTML = (DATA.stale&&DATA.stale.length)?` <span class="stale">⚠ ${DATA.stale.length} днів з кешу (ліміт API)</span>`:"";
   if(typeof refresh==="function") refresh();
 } }).catch(()=>{}); }
